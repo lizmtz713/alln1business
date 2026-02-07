@@ -1,0 +1,26 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#gradient)"/>
+  
+  <!-- Main icon - simplified chart/document -->
+  <g transform="translate(256, 200)">
+    <!-- Document base -->
+    <rect x="0" y="0" width="512" height="624" rx="48" fill="white" fill-opacity="0.95"/>
+    
+    <!-- Chart bars -->
+    <rect x="80" y="400" width="80" height="144" rx="16" fill="#3B82F6"/>
+    <rect x="200" y="300" width="80" height="244" rx="16" fill="#10B981"/>
+    <rect x="320" y="200" width="80" height="344" rx="16" fill="#8B5CF6"/>
+    
+    <!-- Checkmark circle -->
+    <circle cx="400" cy="120" r="72" fill="#10B981"/>
+    <path d="M360 120 L385 145 L440 90" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A8A"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+</svg>
