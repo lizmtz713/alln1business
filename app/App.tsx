@@ -22,6 +22,7 @@ import { AIScreen } from './src/screens/AIScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AddReceiptScreen } from './src/screens/AddReceiptScreen';
 import { QuickAddScreen } from './src/screens/QuickAddScreen';
+import { HealthScoreScreen } from './src/screens/HealthScoreScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -110,6 +111,16 @@ function MainStack() {
         name="QuickAdd" 
         component={QuickAddScreen}
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen 
+        name="HealthScore" 
+        component={HealthScoreScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="TaxReadiness" 
+        component={HealthScoreScreen}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );
