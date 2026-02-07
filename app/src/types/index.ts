@@ -183,4 +183,72 @@ export type RootStackParamList = {
   Settings: undefined;
   Login: undefined;
   SignUp: undefined;
+  Paywall: { source?: PaywallSource };
 };
+
+// ===========================================
+// SUBSCRIPTION TYPES
+// ===========================================
+
+export type SubscriptionTier = 'free' | 'pro' | 'business';
+
+export type PaywallSource =
+  | 'settings'
+  | 'receipt_limit'
+  | 'ai_limit'
+  | 'feature_gate'
+  | 'onboarding'
+  | 'promotion';
+
+export interface SubscriptionInfo {
+  tier: SubscriptionTier;
+  isActive: boolean;
+  expirationDate: Date | null;
+  willRenew: boolean;
+  productIdentifier: string | null;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  tier: SubscriptionTier;
+  price: number;
+  priceString: string;
+  period: 'monthly' | 'yearly';
+  features: string[];
+}
+
+// Feature flags based on subscription tier
+export interface FeatureFlags {
+  // Pro+ features
+  canUseAICFO: boolean;
+  canUseUnlimitedReceipts: boolean;
+  canExportData: boolean;
+  canUseTaxInsights: boolean;
+  
+  // Business-only features
+  canUseMultiBusiness: boolean;
+  canShareWithAccountant: boolean;
+  canUseAdvancedReports: boolean;
+  canUseTeamCollaboration: boolean;
+  canUseAPI: boolean;
+}
+
+// Free tier limits
+export interface FreeTierLimits {
+  receiptsPerMonth: number;
+  aiChatsPerDay: number;
+}
+
+export const FREE_TIER_LIMITS: FreeTierLimits = {
+  receiptsPerMonth: 10,
+  aiChatsPerDay: 3,
+};
+
+// Usage tracking
+export interface UsageStats {
+  receiptsThisMonth: number;
+  aiChatsToday: number;
+  lastReceiptDate: Date | null;
+  lastAIChatDate: Date | null;
+}

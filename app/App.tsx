@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 
 // Auth Screens
 import { LoginScreen } from './src/screens/auth/LoginScreen';
@@ -24,6 +25,7 @@ import { AddReceiptScreen } from './src/screens/AddReceiptScreen';
 import { QuickAddScreen } from './src/screens/QuickAddScreen';
 import { HealthScoreScreen } from './src/screens/HealthScoreScreen';
 import { TaxFilingScreen } from './src/screens/TaxFilingScreen';
+import { PaywallScreen } from './src/screens/PaywallScreen';
 
 // Initialize services
 import { registerForPushNotifications } from './src/services/notificationService';
@@ -131,6 +133,11 @@ function MainStack() {
         component={TaxFilingScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen 
+        name="Paywall" 
+        component={PaywallScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
     </Stack.Navigator>
   );
 }
@@ -155,10 +162,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <StatusBar style="auto" />
-          <AppNavigator />
-        </NavigationContainer>
+        <SubscriptionProvider>
+          <NavigationContainer>
+            <StatusBar style="auto" />
+            <AppNavigator />
+          </NavigationContainer>
+        </SubscriptionProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

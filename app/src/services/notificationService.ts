@@ -62,7 +62,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.warn('Failed to get push token for push notification!');
       return null;
     }
     
