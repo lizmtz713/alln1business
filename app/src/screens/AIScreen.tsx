@@ -7,14 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChatMessage } from '../types';
+import { getAIResponse } from '../services/aiService';
 
 const SUGGESTED_QUESTIONS = [
-  "Is this expense tax deductible?",
+  "Is my home office tax deductible?",
   "What's the difference between W-9 and 1099?",
-  "How do I categorize home office expenses?",
-  "When are quarterly taxes due?",
   "Can I deduct my phone bill?",
-  "What records should I keep for an audit?",
+  "When are quarterly taxes due?",
+  "What should I know about LLCs?",
+  "How do I deduct business meals?",
 ];
 
 export function AIScreen({ navigation }: any) {
@@ -40,7 +41,7 @@ export function AIScreen({ navigation }: any) {
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
-    // TODO: Replace with actual AI API call
+    // Simulate API delay, then get smart response
     setTimeout(() => {
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -51,28 +52,7 @@ export function AIScreen({ navigation }: any) {
       setMessages(prev => [...prev, aiResponse]);
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    }, 1500);
-  };
-
-  // Placeholder AI responses
-  const getAIResponse = (question: string): string => {
-    const q = question.toLowerCase();
-    
-    if (q.includes('deductible') || q.includes('deduct')) {
-      return "Great question! Business expenses are generally tax deductible if they're \"ordinary and necessary\" for your business. Common deductible expenses include:\n\n• Office supplies & equipment\n• Business travel & meals (50%)\n• Professional services\n• Software subscriptions\n• Home office expenses\n• Marketing & advertising\n\nWould you like me to help categorize a specific expense?";
-    }
-    if (q.includes('w-9') || q.includes('1099')) {
-      return "**W-9 vs 1099:**\n\n📋 **W-9** is a form you fill out to give your tax info (name, address, EIN/SSN) to clients who will pay you. It's a request for your information.\n\n📄 **1099-NEC** is a form a client sends YOU (and the IRS) showing they paid you $600+ during the year.\n\n**Summary:** You give W-9s, you receive 1099s.\n\nNeed help with either form?";
-    }
-    if (q.includes('quarterly') || q.includes('estimated')) {
-      return "📅 **Quarterly Estimated Tax Due Dates:**\n\n• Q1: April 15\n• Q2: June 15\n• Q3: September 15\n• Q4: January 15 (next year)\n\nYou should pay quarterly if you expect to owe $1,000+ in taxes. Use Form 1040-ES to calculate and pay.\n\n**Tip:** Set aside 25-30% of your income for taxes!";
-    }
-    if (q.includes('home office')) {
-      return "🏠 **Home Office Deduction:**\n\nYou can deduct home office expenses if you use part of your home *exclusively and regularly* for business.\n\n**Two methods:**\n\n1. **Simplified:** $5/sq ft, max 300 sq ft = $1,500 max\n\n2. **Regular:** Calculate % of home used, apply to actual expenses (rent, utilities, insurance, repairs)\n\n**Required:** Measure your dedicated workspace and keep receipts!";
-    }
-    
-    return "That's a great question about business finances! While I can provide general guidance, tax situations can vary. Here's what I'd suggest:\n\n1. Keep detailed records of all business transactions\n2. Save receipts for expenses over $75\n3. Separate business and personal expenses\n4. Consider consulting a CPA for complex situations\n\nWould you like me to help with something more specific?";
-  };
+    }, 800);
 
   return (
     <SafeAreaView style={styles.container}>

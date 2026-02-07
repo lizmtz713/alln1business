@@ -20,6 +20,8 @@ import { BillsScreen } from './src/screens/BillsScreen';
 import { ReceiptsScreen } from './src/screens/ReceiptsScreen';
 import { AIScreen } from './src/screens/AIScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { AddReceiptScreen } from './src/screens/AddReceiptScreen';
+import { QuickAddScreen } from './src/screens/QuickAddScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -99,7 +101,16 @@ function MainStack() {
         component={AIScreen}
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
-      {/* TODO: Add more modal screens */}
+      <Stack.Screen 
+        name="AddReceipt" 
+        component={AddReceiptScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen 
+        name="QuickAdd" 
+        component={QuickAddScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
     </Stack.Navigator>
   );
 }

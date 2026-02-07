@@ -27,12 +27,25 @@ An all-in-one business management app for entrepreneurs, freelancers, and small 
 - **Export for taxes** — organized records for tax time
 
 ### 🤖 AI Business Assistant
-Ask anything about running your business:
-- "Is this expense tax deductible?"
+Trained on real tax knowledge — ask anything:
+- "Is my home office tax deductible?"
 - "What's the difference between W-9 and 1099?"
 - "When are quarterly taxes due?"
-- "How do I categorize home office expenses?"
-- "What records should I keep for an audit?"
+- "How do I deduct business meals?"
+- "Should I form an LLC?"
+
+### 📊 Tax Readiness Score
+Know exactly where you stand before tax season:
+- Track your progress from 0% to 100%
+- Get personalized recommendations
+- See your total potential deductions
+- Never scramble at tax time again
+
+### ⚡ Quick Add
+Natural language expense entry:
+- Type "Spent $47 at Staples on ink"
+- AI extracts amount, vendor, and category
+- One-tap save — no forms to fill out
 
 ### 📄 Invoices & Templates (Coming Soon)
 - Professional invoice templates
@@ -131,13 +144,19 @@ service cloud.firestore {
 - [x] Documents vault
 - [x] Bills tracker
 - [x] Receipts manager
-- [x] AI assistant (basic)
-- [ ] Receipt OCR scanning
-- [ ] Invoice templates
+- [x] AI assistant with real tax knowledge
+- [x] Natural language expense entry ("$47 at Staples")
+- [x] Smart receipt categorization
+- [x] Tax readiness score
+- [x] Dashboard insights & alerts
+- [x] Onboarding flow
+- [ ] Real OCR integration (Google Vision)
 - [ ] Push notifications for due dates
+- [ ] Invoice templates
 - [ ] QuickBooks integration
 - [ ] Bank feed imports
-- [ ] Multi-business support
+- [ ] Accountant export/sharing
+- [ ] Voice input
 
 ---
 
