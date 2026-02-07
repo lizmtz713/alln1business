@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Alln1 Business",
+    "slug": "alln1-business",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "alln1",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E3A8A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alln1.business"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E3A8A"
+      },
+      "package": "com.alln1.business"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-document-picker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Alln1 to access your camera for scanning receipts and documents."
+        }
+      ]
+    ]
+  }
+}
