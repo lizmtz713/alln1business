@@ -23,6 +23,10 @@ import { ProfileScreen } from './src/screens/ProfileScreen';
 import { AddReceiptScreen } from './src/screens/AddReceiptScreen';
 import { QuickAddScreen } from './src/screens/QuickAddScreen';
 import { HealthScoreScreen } from './src/screens/HealthScoreScreen';
+import { TaxFilingScreen } from './src/screens/TaxFilingScreen';
+
+// Initialize services
+import { registerForPushNotifications } from './src/services/notificationService';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -120,6 +124,11 @@ function MainStack() {
       <Stack.Screen 
         name="TaxReadiness" 
         component={HealthScoreScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen 
+        name="TaxFiling" 
+        component={TaxFilingScreen}
         options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
