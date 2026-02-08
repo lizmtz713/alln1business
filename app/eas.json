@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "lizmtz713@gmail.com",
+        "ascAppId": "6758895567",
+        "appleTeamId": "YOUR_TEAM_ID"
+      }
+    }
+  }
+}
