@@ -5,6 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFeatureGate } from '../hooks/useFeatureGate';
 import { 
   calculateBusinessHealth, 
   forecastCashFlow,
@@ -17,6 +18,7 @@ import {
 const { width } = Dimensions.get('window');
 
 export function HealthScoreScreen({ navigation }: any) {
+  const { canUseAICFO, canUseTaxInsights } = useFeatureGate();
   const [health, setHealth] = useState<BusinessHealthScore | null>(null);
   const [forecast, setForecast] = useState<CashFlowForecast | null>(null);
   const [moneyMoves, setMoneyMoves] = useState<MoneyMove[]>([]);
@@ -177,8 +179,38 @@ export function HealthScoreScreen({ navigation }: any) {
           />
         </View>
 
-        {/* Cash Flow Forecast */}
-        {forecast && (
+        {/* Pro Feature Gate - Show upgrade prompt for free users */}
+        {!canUseAICFO && (
+          <TouchableOpacity 
+            style={styles.upgradeCard}
+            onPress={() => navigation.navigate('Paywall', { source: 'feature_gate' })}
+          >
+            <LinearGradient
+              colors={['#3B82F6', '#1D4ED8']}
+              style={styles.upgradeGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.upgradeContent}>
+                <View style={styles.upgradeBadge}>
+                  <Ionicons name="lock-closed" size={16} color="#FFF" />
+                  <Text style={styles.upgradeBadgeText}>PRO</Text>
+                </View>
+                <Text style={styles.upgradeTitle}>Unlock Full AI CFO Insights</Text>
+                <Text style={styles.upgradeText}>
+                  Get cash flow forecasts, smart money moves, detailed risk analysis, and personalized tax savings tips.
+                </Text>
+                <View style={styles.upgradeButton}>
+                  <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#3B82F6" />
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* Cash Flow Forecast - Pro only */}
+        {forecast && canUseAICFO && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cash Flow Forecast</Text>
             <View style={styles.forecastCard}>
@@ -209,8 +241,8 @@ export function HealthScoreScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* Risk Factors */}
-        {health.riskFactors.length > 0 && (
+        {/* Risk Factors - Pro only */}
+        {health.riskFactors.length > 0 && canUseAICFO && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>⚠️ Risk Factors</Text>
             {health.riskFactors.map((risk, i) => (
@@ -222,8 +254,8 @@ export function HealthScoreScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* Opportunities */}
-        {health.opportunities.length > 0 && (
+        {/* Opportunities - Pro only */}
+        {health.opportunities.length > 0 && canUseTaxInsights && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>💡 Opportunities</Text>
             {health.opportunities.map((opp, i) => (
@@ -235,8 +267,8 @@ export function HealthScoreScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* Money Moves */}
-        {moneyMoves.length > 0 && (
+        {/* Money Moves - Pro only */}
+        {moneyMoves.length > 0 && canUseAICFO && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>💰 Smart Money Moves</Text>
             {moneyMoves.slice(0, 3).map((move) => (
@@ -489,4 +521,60 @@ const styles = StyleSheet.create({
   ctaText: { flex: 1 },
   ctaTitle: { fontSize: 16, fontWeight: '600', color: '#FFF' },
   ctaSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  upgradeCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  upgradeGradient: {
+    padding: 24,
+  },
+  upgradeContent: {
+    alignItems: 'center',
+  },
+  upgradeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+    marginBottom: 16,
+  },
+  upgradeBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  upgradeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  upgradeText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  upgradeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  upgradeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
 });

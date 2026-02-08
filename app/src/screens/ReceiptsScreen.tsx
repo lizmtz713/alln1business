@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureGate, useFeatureUsage } from '../hooks/useFeatureGate';
 import { Receipt, ExpenseCategory } from '../types';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 
@@ -29,9 +30,31 @@ const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 
 export function ReceiptsScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { checkReceiptLimit, canUseUnlimitedReceipts } = useFeatureGate();
+  const { getReceiptUsage } = useFeatureUsage();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'this_month' | 'deductible'>('all');
+  const [usageInfo, setUsageInfo] = useState({ used: 0, remaining: 10, limit: 10 });
+
+  // Load usage info
+  useEffect(() => {
+    const loadUsage = async () => {
+      const usage = await getReceiptUsage();
+      setUsageInfo(usage);
+    };
+    loadUsage();
+  }, [receipts]); // Refresh when receipts change
+
+  // Handle add receipt with feature gate
+  const handleAddReceipt = async () => {
+    const allowed = await checkReceiptLimit();
+    if (!allowed) {
+      navigation.navigate('Paywall', { source: 'receipt_limit' });
+      return;
+    }
+    navigation.navigate('AddReceipt');
+  };
 
   useEffect(() => {
     fetchReceipts();
@@ -80,13 +103,45 @@ export function ReceiptsScreen({ navigation }: any) {
         <Text style={styles.title}>Receipts</Text>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => navigation.navigate('AddReceipt')}
+          onPress={handleAddReceipt}
         >
           <Ionicons name="camera" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
+        {/* Usage Limit Banner (for free users) */}
+        {!canUseUnlimitedReceipts && (
+          <TouchableOpacity 
+            style={[
+              styles.usageBanner,
+              usageInfo.remaining <= 3 && styles.usageBannerWarning,
+              usageInfo.remaining === 0 && styles.usageBannerDanger,
+            ]}
+            onPress={() => navigation.navigate('Paywall', { source: 'receipt_limit' })}
+          >
+            <View style={styles.usageBannerContent}>
+              <Ionicons 
+                name={usageInfo.remaining === 0 ? "alert-circle" : "receipt"} 
+                size={20} 
+                color={usageInfo.remaining === 0 ? "#DC2626" : usageInfo.remaining <= 3 ? "#D97706" : "#3B82F6"} 
+              />
+              <Text style={[
+                styles.usageBannerText,
+                usageInfo.remaining === 0 && styles.usageBannerTextDanger,
+              ]}>
+                {usageInfo.remaining === 0 
+                  ? "Receipt limit reached" 
+                  : `${usageInfo.remaining} of ${usageInfo.limit} receipts remaining`}
+              </Text>
+            </View>
+            <View style={styles.usageBannerAction}>
+              <Text style={styles.usageBannerUpgrade}>Upgrade</Text>
+              <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryItem}>
@@ -127,7 +182,7 @@ export function ReceiptsScreen({ navigation }: any) {
             </Text>
             <TouchableOpacity 
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('AddReceipt')}
+              onPress={handleAddReceipt}
             >
               <Ionicons name="camera" size={20} color="#FFF" />
               <Text style={styles.emptyButtonText}>Scan Receipt</Text>
@@ -197,6 +252,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: { flex: 1, paddingHorizontal: 20 },
+  usageBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  usageBannerWarning: {
+    backgroundColor: '#FEF3C7',
+  },
+  usageBannerDanger: {
+    backgroundColor: '#FEE2E2',
+  },
+  usageBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  usageBannerText: {
+    fontSize: 14,
+    color: '#1E40AF',
+    fontWeight: '500',
+  },
+  usageBannerTextDanger: {
+    color: '#DC2626',
+  },
+  usageBannerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  usageBannerUpgrade: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: '#FFF',

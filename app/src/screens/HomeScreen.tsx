@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureGate } from '../hooks/useFeatureGate';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { format, isAfter, isBefore, addDays, startOfMonth, endOfMonth, getDate } from 'date-fns';
@@ -13,6 +14,7 @@ import { calculateTaxReadiness, generateInsights } from '../services/aiService';
 
 export function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { canUseAICFO, checkReceiptLimit, checkAIChatLimit } = useFeatureGate();
   const [refreshing, setRefreshing] = useState(false);
   const [taxReadiness, setTaxReadiness] = useState({ score: 0, grade: 'F' as const });
   const [insights, setInsights] = useState<any[]>([]);
@@ -116,6 +118,34 @@ export function HomeScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
+  // Handle quick action with feature gating
+  const handleQuickAction = async (screen: string) => {
+    if (screen === 'AddReceipt') {
+      const allowed = await checkReceiptLimit();
+      if (!allowed) {
+        navigation.navigate('Paywall', { source: 'receipt_limit' });
+        return;
+      }
+    }
+    if (screen === 'AIChat') {
+      const allowed = await checkAIChatLimit();
+      if (!allowed) {
+        navigation.navigate('Paywall', { source: 'ai_limit' });
+        return;
+      }
+    }
+    navigation.navigate(screen);
+  };
+
+  // Handle AI CFO / Health Score navigation
+  const handleHealthScorePress = () => {
+    if (!canUseAICFO) {
+      navigation.navigate('Paywall', { source: 'feature_gate' });
+      return;
+    }
+    navigation.navigate('TaxReadiness');
+  };
+
   const quickActions = [
     { icon: 'camera', label: 'Scan Receipt', screen: 'AddReceipt', color: '#10B981' },
     { icon: 'add-circle', label: 'Add Bill', screen: 'AddBill', color: '#F59E0B' },
@@ -165,7 +195,7 @@ export function HomeScreen({ navigation }: any) {
           {/* Tax Readiness Score */}
           <TouchableOpacity 
             style={styles.taxReadinessCard}
-            onPress={() => navigation.navigate('TaxReadiness')}
+            onPress={handleHealthScorePress}
           >
             <View style={styles.taxReadinessLeft}>
               <Text style={styles.taxReadinessLabel}>Tax Readiness Score</Text>
@@ -193,7 +223,7 @@ export function HomeScreen({ navigation }: any) {
             <TouchableOpacity
               key={index}
               style={styles.quickAction}
-              onPress={() => navigation.navigate(action.screen)}
+              onPress={() => handleQuickAction(action.screen)}
             >
               <View style={[styles.quickActionIcon, { backgroundColor: action.color }]}>
                 <Ionicons name={action.icon as any} size={22} color="#FFF" />
@@ -319,7 +349,7 @@ export function HomeScreen({ navigation }: any) {
         {/* AI Assistant CTA */}
         <TouchableOpacity 
           style={styles.aiCta}
-          onPress={() => navigation.navigate('AIChat')}
+          onPress={() => handleQuickAction('AIChat')}
         >
           <LinearGradient
             colors={['#8B5CF6', '#6366F1']}
@@ -348,7 +378,7 @@ export function HomeScreen({ navigation }: any) {
             </Text>
             <TouchableOpacity 
               style={styles.emptyButton}
-              onPress={() => navigation.navigate('AddReceipt')}
+              onPress={() => handleQuickAction('AddReceipt')}
             >
               <Ionicons name="camera" size={20} color="#FFF" />
               <Text style={styles.emptyButtonText}>Scan First Receipt</Text>

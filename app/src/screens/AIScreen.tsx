@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   KeyboardAvoidingView, Platform, ActivityIndicator
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChatMessage } from '../types';
 import { getAIResponse } from '../services/aiService';
+import { useFeatureGate, useFeatureUsage } from '../hooks/useFeatureGate';
 
 const SUGGESTED_QUESTIONS = [
   "Is my home office tax deductible?",
@@ -19,13 +20,32 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export function AIScreen({ navigation }: any) {
+  const { checkAIChatLimit, incrementAIChatCount, canUseAICFO } = useFeatureGate();
+  const { getAIChatUsage } = useFeatureUsage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usageInfo, setUsageInfo] = useState({ used: 0, remaining: 3, limit: 3 });
   const scrollRef = useRef<ScrollView>(null);
+
+  // Load usage info on mount
+  useEffect(() => {
+    const loadUsage = async () => {
+      const usage = await getAIChatUsage();
+      setUsageInfo(usage);
+    };
+    loadUsage();
+  }, [messages]); // Refresh after each message
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+
+    // Check AI chat limit before sending
+    const allowed = await checkAIChatLimit();
+    if (!allowed) {
+      navigation.navigate('Paywall', { source: 'ai_limit' });
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -37,6 +57,9 @@ export function AIScreen({ navigation }: any) {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+
+    // Increment the chat count for free tier tracking
+    await incrementAIChatCount();
 
     // Scroll to bottom
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -53,6 +76,7 @@ export function AIScreen({ navigation }: any) {
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }, 800);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -63,6 +87,35 @@ export function AIScreen({ navigation }: any) {
         <Text style={styles.title}>AI Business Assistant</Text>
         <View style={{ width: 24 }} />
       </View>
+
+      {/* Usage Banner for free users */}
+      {!canUseAICFO && (
+        <TouchableOpacity 
+          style={[
+            styles.usageBanner,
+            usageInfo.remaining <= 1 && styles.usageBannerWarning,
+            usageInfo.remaining === 0 && styles.usageBannerDanger,
+          ]}
+          onPress={() => navigation.navigate('Paywall', { source: 'ai_limit' })}
+        >
+          <View style={styles.usageBannerContent}>
+            <Ionicons 
+              name={usageInfo.remaining === 0 ? "alert-circle" : "chatbubbles"} 
+              size={18} 
+              color={usageInfo.remaining === 0 ? "#DC2626" : usageInfo.remaining <= 1 ? "#D97706" : "#8B5CF6"} 
+            />
+            <Text style={[
+              styles.usageBannerText,
+              usageInfo.remaining === 0 && styles.usageBannerTextDanger,
+            ]}>
+              {usageInfo.remaining === 0 
+                ? "Daily chat limit reached" 
+                : `${usageInfo.remaining} of ${usageInfo.limit} chats remaining today`}
+            </Text>
+          </View>
+          <Text style={styles.usageBannerUpgrade}>Upgrade →</Text>
+        </TouchableOpacity>
+      )}
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -166,6 +219,38 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E2E8F0',
   },
   title: { fontSize: 18, fontWeight: '600', color: '#1E293B' },
+  usageBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F5F3FF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  usageBannerWarning: {
+    backgroundColor: '#FEF3C7',
+  },
+  usageBannerDanger: {
+    backgroundColor: '#FEE2E2',
+  },
+  usageBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  usageBannerText: {
+    fontSize: 13,
+    color: '#6D28D9',
+    fontWeight: '500',
+  },
+  usageBannerTextDanger: {
+    color: '#DC2626',
+  },
+  usageBannerUpgrade: {
+    fontSize: 13,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
   keyboardView: { flex: 1 },
   messagesContainer: { flex: 1 },
   messagesContent: { padding: 20 },

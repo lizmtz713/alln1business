@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, Image, ScrollView,
   TextInput, Alert, ActivityIndicator
@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureGate } from '../hooks/useFeatureGate';
 import { analyzeReceipt } from '../services/aiService';
 import { ExpenseCategory } from '../types';
 
@@ -28,9 +29,21 @@ const CATEGORIES: { value: ExpenseCategory; label: string; icon: string }[] = [
 
 export function AddReceiptScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { checkReceiptLimit, incrementReceiptCount } = useFeatureGate();
   const [image, setImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Check limit on mount - redirect if already at limit
+  useEffect(() => {
+    const verifyLimit = async () => {
+      const allowed = await checkReceiptLimit();
+      if (!allowed) {
+        navigation.replace('Paywall', { source: 'receipt_limit' });
+      }
+    };
+    verifyLimit();
+  }, []);
   
   // Form fields
   const [vendor, setVendor] = useState('');
@@ -99,6 +112,13 @@ export function AddReceiptScreen({ navigation }: any) {
       return;
     }
 
+    // Double-check limit before saving (in case user sat on screen)
+    const allowed = await checkReceiptLimit();
+    if (!allowed) {
+      navigation.navigate('Paywall', { source: 'receipt_limit' });
+      return;
+    }
+
     setSaving(true);
     try {
       await addDoc(collection(db, 'receipts'), {
@@ -113,6 +133,9 @@ export function AddReceiptScreen({ navigation }: any) {
         ocrProcessed: true,
         createdAt: new Date(),
       });
+
+      // Increment the receipt count for free tier tracking
+      await incrementReceiptCount();
 
       Alert.alert(
         'Receipt Saved! ✅',

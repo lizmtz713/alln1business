@@ -5,9 +5,28 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useFeatureGate } from '../hooks/useFeatureGate';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 export function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const { canExportData, canShareWithAccountant } = useFeatureGate();
+  const { tier } = useSubscription();
+
+  // Handle menu item press with feature gating
+  const handleMenuPress = (screen: string) => {
+    // Gate export feature
+    if (screen === 'ExportData' && !canExportData) {
+      navigation.navigate('Paywall', { source: 'feature_gate' });
+      return;
+    }
+    // Gate accountant sharing (business only)
+    if (screen === 'AccountantSharing' && !canShareWithAccountant) {
+      navigation.navigate('Paywall', { source: 'feature_gate' });
+      return;
+    }
+    navigation.navigate(screen);
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -21,15 +40,15 @@ export function ProfileScreen({ navigation }: any) {
   };
 
   const menuItems = [
-    { icon: 'business', label: 'Business Profile', screen: 'BusinessProfile' },
-    { icon: 'card', label: 'Digital Business Card', screen: 'BusinessCard' },
-    { icon: 'document-text', label: 'Invoice Templates', screen: 'InvoiceTemplates' },
-    { icon: 'cloud-upload', label: 'Export Data', screen: 'ExportData' },
-    { icon: 'link', label: 'Integrations', screen: 'Integrations' },
-    { icon: 'notifications', label: 'Notifications', screen: 'Notifications' },
-    { icon: 'lock-closed', label: 'Security', screen: 'Security' },
-    { icon: 'help-circle', label: 'Help & Support', screen: 'Support' },
-    { icon: 'information-circle', label: 'About Alln1', screen: 'About' },
+    { icon: 'business', label: 'Business Profile', screen: 'BusinessProfile', requiresPro: false },
+    { icon: 'card', label: 'Digital Business Card', screen: 'BusinessCard', requiresPro: false },
+    { icon: 'document-text', label: 'Invoice Templates', screen: 'InvoiceTemplates', requiresPro: false },
+    { icon: 'cloud-upload', label: 'Export Data', screen: 'ExportData', requiresPro: true, proLabel: 'PRO' },
+    { icon: 'link', label: 'Integrations', screen: 'Integrations', requiresPro: false },
+    { icon: 'notifications', label: 'Notifications', screen: 'Notifications', requiresPro: false },
+    { icon: 'lock-closed', label: 'Security', screen: 'Security', requiresPro: false },
+    { icon: 'help-circle', label: 'Help & Support', screen: 'Support', requiresPro: false },
+    { icon: 'information-circle', label: 'About Alln1', screen: 'About', requiresPro: false },
   ];
 
   return (
@@ -54,6 +73,28 @@ export function ProfileScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        {/* Subscription Status */}
+        <TouchableOpacity 
+          style={styles.subscriptionCard}
+          onPress={() => navigation.navigate('Paywall', { source: 'settings' })}
+        >
+          <View style={styles.subscriptionInfo}>
+            <View style={[
+              styles.tierBadge,
+              tier === 'pro' && styles.tierBadgePro,
+              tier === 'business' && styles.tierBadgeBusiness,
+            ]}>
+              <Text style={styles.tierBadgeText}>
+                {tier.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.subscriptionLabel}>
+              {tier === 'free' ? 'Upgrade for unlimited access' : 'Manage subscription'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
+        </TouchableOpacity>
+
         {/* Menu Items */}
         <View style={styles.menu}>
           {menuItems.map((item, index) => (
@@ -63,13 +104,21 @@ export function ProfileScreen({ navigation }: any) {
                 styles.menuItem,
                 index === menuItems.length - 1 && styles.menuItemLast
               ]}
-              onPress={() => navigation.navigate(item.screen)}
+              onPress={() => handleMenuPress(item.screen)}
             >
               <View style={styles.menuIcon}>
                 <Ionicons name={item.icon as any} size={22} color="#3B82F6" />
               </View>
               <Text style={styles.menuLabel}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              <View style={styles.menuRight}>
+                {item.requiresPro && !canExportData && (
+                  <View style={styles.proBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#FFF" />
+                    <Text style={styles.proBadgeText}>{item.proLabel}</Text>
+                  </View>
+                )}
+                <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -142,6 +191,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: { flex: 1, fontSize: 16, color: '#1E293B', marginLeft: 12 },
+  menuRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  subscriptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  subscriptionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  tierBadge: {
+    backgroundColor: '#64748B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  tierBadgePro: {
+    backgroundColor: '#3B82F6',
+  },
+  tierBadgeBusiness: {
+    backgroundColor: '#7C3AED',
+  },
+  tierBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  subscriptionLabel: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
