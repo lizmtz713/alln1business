@@ -1,17 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeatureGate } from '../hooks/useFeatureGate';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { BusinessAI, setAPIKey, hasAPIKey } from '../services/businessAIService';
 
 export function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
   const { canExportData, canShareWithAccountant } = useFeatureGate();
   const { tier } = useSubscription();
+  
+  // AI Settings
+  const [showAISettings, setShowAISettings] = useState(false);
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [anthropicKey, setAnthropicKey] = useState('');
+  const [aiConfigured, setAiConfigured] = useState(hasAPIKey());
+  
+  useEffect(() => {
+    loadApiKeys();
+  }, []);
+  
+  const loadApiKeys = async () => {
+    try {
+      const storedOpenai = await AsyncStorage.getItem('@alln1_openai_key');
+      const storedAnthropic = await AsyncStorage.getItem('@alln1_anthropic_key');
+      if (storedOpenai) {
+        setOpenaiKey(storedOpenai);
+        setAPIKey('openai', storedOpenai);
+      }
+      if (storedAnthropic) {
+        setAnthropicKey(storedAnthropic);
+        setAPIKey('anthropic', storedAnthropic);
+      }
+      setAiConfigured(hasAPIKey());
+    } catch (e) {
+      console.error('Error loading API keys:', e);
+    }
+  };
+  
+  const saveApiKey = async (provider: 'openai' | 'anthropic', key: string) => {
+    try {
+      const storageKey = provider === 'openai' ? '@alln1_openai_key' : '@alln1_anthropic_key';
+      if (key.trim()) {
+        await AsyncStorage.setItem(storageKey, key.trim());
+        setAPIKey(provider, key.trim());
+      } else {
+        await AsyncStorage.removeItem(storageKey);
+      }
+      setAiConfigured(hasAPIKey());
+      Alert.alert('Saved', `${provider === 'openai' ? 'OpenAI' : 'Anthropic'} key ${key.trim() ? 'saved' : 'removed'}.`);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to save API key.');
+    }
+  };
 
   // Handle menu item press with feature gating
   const handleMenuPress = (screen: string) => {
@@ -94,6 +140,64 @@ export function ProfileScreen({ navigation }: any) {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
         </TouchableOpacity>
+
+        {/* AI CFO Settings */}
+        <View style={styles.menu}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setShowAISettings(!showAISettings)}
+          >
+            <View style={styles.menuIcon}>
+              <View style={[styles.aiDot, { backgroundColor: aiConfigured ? '#10B981' : '#EF4444' }]} />
+            </View>
+            <Text style={styles.menuLabel}>
+              AI CFO {aiConfigured ? '(Enabled)' : '(Configure)'}
+            </Text>
+            <Ionicons name={showAISettings ? 'chevron-up' : 'chevron-down'} size={20} color="#94A3B8" />
+          </TouchableOpacity>
+          
+          {showAISettings && (
+            <View style={styles.aiSettings}>
+              <View style={styles.apiKeyRow}>
+                <TextInput
+                  style={styles.apiKeyInput}
+                  value={openaiKey}
+                  onChangeText={setOpenaiKey}
+                  placeholder="OpenAI API Key (sk-...)"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.saveKeyButton}
+                  onPress={() => saveApiKey('openai', openaiKey)}
+                >
+                  <Text style={styles.saveKeyText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.apiKeyRow}>
+                <TextInput
+                  style={styles.apiKeyInput}
+                  value={anthropicKey}
+                  onChangeText={setAnthropicKey}
+                  placeholder="Anthropic API Key (sk-ant-...)"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={styles.saveKeyButton}
+                  onPress={() => saveApiKey('anthropic', anthropicKey)}
+                >
+                  <Text style={styles.saveKeyText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.apiKeyNote}>
+                Powers the AI CFO with real tax advice. Keys stored securely on device.
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Menu Items */}
         <View style={styles.menu}>
@@ -257,4 +361,26 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 16, fontWeight: '600', color: '#EF4444' },
   version: { textAlign: 'center', color: '#94A3B8', marginTop: 24, fontSize: 13 },
+  // AI Settings
+  aiDot: { width: 12, height: 12, borderRadius: 6 },
+  aiSettings: { padding: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  apiKeyRow: { flexDirection: 'row', marginBottom: 12, gap: 8 },
+  apiKeyInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  saveKeyButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  saveKeyText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
+  apiKeyNote: { fontSize: 12, color: '#64748B', lineHeight: 18 },
 });
