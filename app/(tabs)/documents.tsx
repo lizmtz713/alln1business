@@ -6,14 +6,22 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   useInvoices,
   useInvoiceStats,
 } from '../../src/hooks/useInvoices';
+import {
+  useBills,
+  useBillStats,
+  isOverdue,
+  isDueSoon,
+} from '../../src/hooks/useBills';
 import { hasSupabaseEnv } from '../../src/services/env';
 import type { InvoiceWithCustomer } from '../../src/types/invoices';
+import type { BillWithVendor } from '../../src/types/bills';
 import { format, parseISO } from 'date-fns';
 
 type DocSegment = 'all' | 'invoices' | 'bills' | 'contracts' | 'forms';
@@ -26,7 +34,7 @@ const SEGMENTS: { id: DocSegment; label: string }[] = [
   { id: 'forms', label: 'Forms' },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
+const INVOICE_STATUS_COLORS: Record<string, string> = {
   draft: '#64748B',
   sent: '#3B82F6',
   viewed: '#3B82F6',
@@ -35,8 +43,15 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: '#94A3B8',
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] ?? '#64748B';
+const BILL_STATUS_COLORS: Record<string, string> = {
+  pending: '#F59E0B',
+  paid: '#10B981',
+  overdue: '#EF4444',
+  cancelled: '#94A3B8',
+};
+
+function InvoiceStatusBadge({ status }: { status: string }) {
+  const color = INVOICE_STATUS_COLORS[status] ?? '#64748B';
   return (
     <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
       <Text style={{ color: '#fff', fontSize: 11, fontWeight: '500', textTransform: 'capitalize' }}>
@@ -76,7 +91,7 @@ function InvoiceCard({
             {customerName}
           </Text>
         </View>
-        <StatusBadge status={invoice.status} />
+        <InvoiceStatusBadge status={invoice.status} />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
         <Text style={{ color: '#10B981', fontWeight: '600', fontSize: 16 }}>
@@ -90,15 +105,84 @@ function InvoiceCard({
   );
 }
 
+function BillStatusBadge({ bill }: { bill: BillWithVendor }) {
+  const displayStatus = isOverdue(bill) ? 'overdue' : bill.status;
+  const color = BILL_STATUS_COLORS[displayStatus] ?? '#64748B';
+  return (
+    <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '500', textTransform: 'capitalize' }}>
+        {displayStatus}
+      </Text>
+    </View>
+  );
+}
+
+function BillCard({
+  bill,
+  onPress,
+}: {
+  bill: BillWithVendor;
+  onPress: () => void;
+}) {
+  const vendor = bill.vendors as { company_name?: string; contact_name?: string } | null;
+  const providerName = bill.provider_name || vendor?.company_name || vendor?.contact_name || '—';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: '#1E293B',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#F8FAFC', fontWeight: '600', fontSize: 16 }}>{bill.bill_name}</Text>
+          <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 4 }} numberOfLines={1}>
+            {providerName}
+          </Text>
+        </View>
+        <BillStatusBadge bill={bill} />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+        <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 16 }}>
+          ${Number(bill.amount).toFixed(2)}
+        </Text>
+        <Text style={{ color: '#64748B', fontSize: 12 }}>
+          Due {format(parseISO(bill.due_date), 'MMM d, yyyy')}
+        </Text>
+      </View>
+      {bill.payment_url && (
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            Linking.openURL(bill.payment_url!);
+          }}
+          style={{ marginTop: 8 }}
+        >
+          <Text style={{ color: '#3B82F6', fontSize: 12 }}>Pay Now</Text>
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function DocumentsScreen() {
   const router = useRouter();
   const [segment, setSegment] = useState<DocSegment>('invoices');
   const [search, setSearch] = useState('');
 
-  const { data: invoices = [], isLoading } = useInvoices({
+  const { data: invoices = [], isLoading: invoicesLoading } = useInvoices({
     search: segment === 'invoices' && search ? search : undefined,
   });
   const { data: stats = { draft: 0, sent: 0, overdue: 0, paid: 0 } } = useInvoiceStats();
+
+  const { data: bills = [], isLoading: billsLoading } = useBills({
+    search: segment === 'bills' && search ? search : undefined,
+  });
+  const { data: billStats = { due_soon: 0, overdue: 0, paid: 0 } } = useBillStats();
 
   const filteredInvoices = useMemo(() => {
     if (segment !== 'invoices' && segment !== 'all') return [];
@@ -106,6 +190,20 @@ export default function DocumentsScreen() {
   }, [invoices, segment]);
 
   const invoicesForAll = useMemo(() => invoices.slice(0, 5), [invoices]);
+
+  const billsGrouped = useMemo(() => {
+    const overdue: BillWithVendor[] = [];
+    const dueThisWeek: BillWithVendor[] = [];
+    const upcoming: BillWithVendor[] = [];
+    const paid: BillWithVendor[] = [];
+    for (const b of bills) {
+      if (b.status === 'paid') paid.push(b);
+      else if (isOverdue(b)) overdue.push(b);
+      else if (isDueSoon(b)) dueThisWeek.push(b);
+      else upcoming.push(b);
+    }
+    return { overdue, dueThisWeek, upcoming, paid };
+  }, [bills]);
 
   if (!hasSupabaseEnv) {
     return (
@@ -192,7 +290,7 @@ export default function DocumentsScreen() {
               placeholderTextColor="#64748B"
             />
 
-            {isLoading ? (
+            {invoicesLoading ? (
               <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
             ) : filteredInvoices.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 48 }}>
@@ -242,7 +340,7 @@ export default function DocumentsScreen() {
         {segment === 'all' && (
           <View style={{ marginTop: 16 }}>
             <Text style={{ color: '#F8FAFC', fontWeight: '600', marginBottom: 12 }}>Invoices</Text>
-            {invoicesForAll.length === 0 && !isLoading ? (
+            {invoicesForAll.length === 0 && !invoicesLoading ? (
               <Text style={{ color: '#64748B', marginBottom: 16 }}>No invoices</Text>
             ) : (
               invoicesForAll.map((inv) => (
@@ -267,7 +365,19 @@ export default function DocumentsScreen() {
             <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
               Bills
             </Text>
-            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+            {bills.length === 0 ? (
+              <Text style={{ color: '#64748B', marginBottom: 16 }}>No bills</Text>
+            ) : (
+              bills.slice(0, 3).map((b) => (
+                <BillCard key={b.id} bill={b} onPress={() => router.push(`/bill/${b.id}` as never)} />
+              ))
+            )}
+            <TouchableOpacity
+              onPress={() => router.push('/(modals)/add-bill' as never)}
+              style={{ backgroundColor: '#334155', borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 8 }}
+            >
+              <Text style={{ color: '#3B82F6' }}>Add Bill</Text>
+            </TouchableOpacity>
             <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
               Contracts
             </Text>
@@ -279,7 +389,95 @@ export default function DocumentsScreen() {
           </View>
         )}
 
-        {(segment === 'bills' || segment === 'contracts' || segment === 'forms') && (
+        {segment === 'bills' && (
+          <>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Due Soon</Text>
+                <Text style={{ color: '#F59E0B', fontWeight: '600', fontSize: 18 }}>{billStats.due_soon}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Overdue</Text>
+                <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 18 }}>{billStats.overdue}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Paid</Text>
+                <Text style={{ color: '#10B981', fontWeight: '600', fontSize: 18 }}>{billStats.paid}</Text>
+              </View>
+            </View>
+            <TextInput
+              style={{
+                backgroundColor: '#1E293B',
+                borderRadius: 12,
+                padding: 12,
+                color: '#F8FAFC',
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#334155',
+              }}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search bills..."
+              placeholderTextColor="#64748B"
+            />
+            {billsLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
+            ) : bills.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Text style={{ color: '#94A3B8', marginBottom: 16 }}>No bills yet</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/add-bill' as never)}
+                  style={{ backgroundColor: '#3B82F6', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>Add Bill</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {billsGrouped.overdue.length > 0 && (
+                  <>
+                    <Text style={{ color: '#EF4444', fontWeight: '600', marginBottom: 8, marginTop: 8 }}>OVERDUE</Text>
+                    {billsGrouped.overdue.map((b) => (
+                      <BillCard key={b.id} bill={b} onPress={() => router.push(`/bill/${b.id}` as never)} />
+                    ))}
+                  </>
+                )}
+                {billsGrouped.dueThisWeek.length > 0 && (
+                  <>
+                    <Text style={{ color: '#F59E0B', fontWeight: '600', marginBottom: 8, marginTop: 16 }}>DUE THIS WEEK</Text>
+                    {billsGrouped.dueThisWeek.map((b) => (
+                      <BillCard key={b.id} bill={b} onPress={() => router.push(`/bill/${b.id}` as never)} />
+                    ))}
+                  </>
+                )}
+                {billsGrouped.upcoming.length > 0 && (
+                  <>
+                    <Text style={{ color: '#94A3B8', fontWeight: '600', marginBottom: 8, marginTop: 16 }}>UPCOMING</Text>
+                    {billsGrouped.upcoming.map((b) => (
+                      <BillCard key={b.id} bill={b} onPress={() => router.push(`/bill/${b.id}` as never)} />
+                    ))}
+                  </>
+                )}
+                {billsGrouped.paid.length > 0 && (
+                  <>
+                    <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 8, marginTop: 16 }}>PAID</Text>
+                    {billsGrouped.paid.map((b) => (
+                      <BillCard key={b.id} bill={b} onPress={() => router.push(`/bill/${b.id}` as never)} />
+                    ))}
+                  </>
+                )}
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/add-bill' as never)}
+                  style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, marginTop: 16, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#3B82F6', fontWeight: '500' }}>Add Bill</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </>
+        )}
+
+        {(segment === 'contracts' || segment === 'forms') && (
           <View style={{ alignItems: 'center', paddingVertical: 48 }}>
             <Text style={{ color: '#94A3B8' }}>Coming soon</Text>
           </View>
