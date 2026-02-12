@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -17,6 +18,8 @@ import {
 } from '../../src/hooks/useInvoices';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
+import { createInvoicePdf } from '../../src/services/pdf';
+import { uploadPdfToDocumentsBucket } from '../../src/services/storage';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,7 +45,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function InvoiceDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { data: invoice, isLoading } = useInvoice(id);
   const updateInvoice = useUpdateInvoice();
   const recordPayment = useRecordInvoicePayment();
@@ -53,16 +56,51 @@ export default function InvoiceDetailScreen() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentRef, setPaymentRef] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [attachPdfOnSend, setAttachPdfOnSend] = useState(false);
 
   const balanceDue = Number(invoice?.balance_due ?? 0);
 
-  const handleMarkSent = async () => {
-    if (!id) return;
+  const handleGeneratePdf = async () => {
+    if (!id || !user?.id) return;
+    setGeneratingPdf(true);
     try {
-      await updateInvoice.mutateAsync({
-        id,
-        updates: { status: 'sent', sent_date: new Date().toISOString() },
+      const { localPath, filename } = await createInvoicePdf(id, user.id);
+      const pdfUrl = await uploadPdfToDocumentsBucket({
+        userId: user.id,
+        filename,
+        localPath,
       });
+      if (pdfUrl) {
+        await updateInvoice.mutateAsync({ id, updates: { pdf_url: pdfUrl } });
+        Linking.openURL(pdfUrl);
+      } else {
+        Alert.alert('Error', 'Failed to upload PDF');
+      }
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  const handleMarkSent = async () => {
+    if (!id || !user?.id) return;
+    try {
+      const updates: { status: string; sent_date: string; pdf_url?: string } = {
+        status: 'sent',
+        sent_date: new Date().toISOString(),
+      };
+      if (attachPdfOnSend && !invoice?.pdf_url) {
+        const { localPath, filename } = await createInvoicePdf(id, user.id);
+        const pdfUrl = await uploadPdfToDocumentsBucket({
+          userId: user.id,
+          filename,
+          localPath,
+        });
+        if (pdfUrl) updates.pdf_url = pdfUrl;
+      }
+      await updateInvoice.mutateAsync({ id, updates });
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }
@@ -264,6 +302,27 @@ export default function InvoiceDetailScreen() {
                 <Text style={{ color: '#fff', fontWeight: '600' }}>Edit Invoice</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={() => setAttachPdfOnSend(!attachPdfOnSend)}
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}
+              >
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: attachPdfOnSend ? '#3B82F6' : '#64748B',
+                    backgroundColor: attachPdfOnSend ? '#3B82F6' : 'transparent',
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {attachPdfOnSend && <Text style={{ color: '#fff', fontSize: 14 }}>✓</Text>}
+                </View>
+                <Text style={{ color: '#F8FAFC' }}>Attach PDF when sending</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={handleMarkSent}
                 disabled={updateInvoice.isPending}
                 style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center' }}
@@ -300,11 +359,23 @@ export default function InvoiceDetailScreen() {
             </Text>
           )}
           {invoice.pdf_url ? (
-            <TouchableOpacity style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center' }}>
-              <Text style={{ color: '#3B82F6' }}>Download PDF</Text>
+            <>
+              <Text style={{ color: '#10B981', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>PDF ready</Text>
+              <TouchableOpacity
+                onPress={() => invoice.pdf_url && Linking.openURL(invoice.pdf_url)}
+                style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#3B82F6' }}>Download PDF</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              onPress={handleGeneratePdf}
+              disabled={generatingPdf}
+              style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center' }}
+            >
+              {generatingPdf ? <ActivityIndicator color="#3B82F6" /> : <Text style={{ color: '#3B82F6' }}>Generate PDF</Text>}
             </TouchableOpacity>
-          ) : invoice.status === 'paid' && (
-            <Text style={{ color: '#64748B', textAlign: 'center', fontSize: 12 }}>PDF placeholder</Text>
           )}
           {invoice.status !== 'cancelled' && (
             <TouchableOpacity onPress={handleDelete}>

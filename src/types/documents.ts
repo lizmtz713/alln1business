@@ -22,6 +22,8 @@ export type Document = {
   related_customer_id: string | null;
   related_vendor_id: string | null;
   file_url: string;
+  pdf_url: string | null;
+  txt_file_url: string | null;
   file_type: string | null;
   file_size: number | null;
   expiration_date: string | null;

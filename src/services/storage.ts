@@ -167,3 +167,42 @@ export async function uploadTextToDocumentsBucket(params: {
     return null;
   }
 }
+
+/** Upload a PDF file to the documents bucket. Path: documents/{userId}/pdf/{timestamp}-{slug}.pdf */
+export async function uploadPdfToDocumentsBucket(params: {
+  userId: string;
+  filename: string;
+  localPath: string;
+}): Promise<string | null> {
+  if (!hasSupabaseConfig) return null;
+
+  try {
+    const slug = params.filename.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.pdf$/, '') || 'document';
+    const path = `${params.userId}/pdf/${Date.now()}-${slug}.pdf`;
+
+    const base64 = await FileSystem.readAsStringAsync(params.localPath, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const arrayBuffer = base64ToArrayBuffer(base64);
+
+    const { data, error } = await supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .upload(path, arrayBuffer, {
+        contentType: 'application/pdf',
+        upsert: false,
+      });
+
+    if (error) {
+      if (__DEV__) console.warn('[Storage] uploadPdfToDocumentsBucket error:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .getPublicUrl(data.path);
+    return urlData.publicUrl;
+  } catch (e) {
+    if (__DEV__) console.warn('[Storage] uploadPdfToDocumentsBucket error:', e);
+    return null;
+  }
+}

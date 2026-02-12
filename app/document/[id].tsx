@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -8,18 +9,65 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useDocument, useDeleteDocument } from '../../src/hooks/useDocuments';
+import { useDocument, useDeleteDocument, useUpdateDocument } from '../../src/hooks/useDocuments';
+import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
+import { createTextDocumentPdf } from '../../src/services/pdf';
+import { uploadPdfToDocumentsBucket } from '../../src/services/storage';
 import { format, parseISO } from 'date-fns';
 
 export default function DocumentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user, profile } = useAuth();
   const { data: doc, isLoading } = useDocument(id);
   const deleteDoc = useDeleteDocument();
+  const updateDoc = useUpdateDocument();
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const handleOpen = () => {
-    if (doc?.file_url) Linking.openURL(doc.file_url);
+    const url = doc?.pdf_url || doc?.file_url;
+    if (url) Linking.openURL(url);
+  };
+
+  const handleOpenTxt = () => {
+    const txtUrl = (doc as { txt_file_url?: string | null })?.txt_file_url;
+    if (txtUrl) Linking.openURL(txtUrl);
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!id || !user?.id || !doc?.content_text) return;
+    setGeneratingPdf(true);
+    try {
+      const { localPath, filename } = await createTextDocumentPdf({
+        title: doc.name,
+        contentText: doc.content_text,
+        meta: { doc_type: doc.doc_type, category: doc.category ?? undefined },
+        businessName: profile?.business_name || profile?.full_name || undefined,
+      });
+      const pdfUrl = await uploadPdfToDocumentsBucket({
+        userId: user.id,
+        filename,
+        localPath,
+      });
+      if (pdfUrl) {
+        await updateDoc.mutateAsync({
+          id,
+          updates: {
+            pdf_url: pdfUrl,
+            file_url: pdfUrl,
+            txt_file_url: doc.file_type === 'txt' ? doc.file_url : null,
+          },
+        });
+        Linking.openURL(pdfUrl);
+      } else {
+        Alert.alert('Error', 'Failed to upload PDF');
+      }
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const handleDelete = () => {
@@ -101,18 +149,54 @@ export default function DocumentDetailScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          onPress={handleOpen}
-          style={{
-            backgroundColor: '#3B82F6',
-            borderRadius: 12,
-            padding: 16,
-            alignItems: 'center',
-            marginBottom: 24,
-          }}
-        >
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Open File</Text>
-        </TouchableOpacity>
+        <View style={{ marginBottom: 24 }}>
+          <TouchableOpacity
+            onPress={handleOpen}
+            style={{
+              backgroundColor: '#3B82F6',
+              borderRadius: 12,
+              padding: 16,
+              alignItems: 'center',
+              marginBottom: doc.pdf_url && (doc as { txt_file_url?: string }).txt_file_url ? 8 : 0,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+              {doc.pdf_url ? 'Open PDF' : 'Open File'}
+            </Text>
+          </TouchableOpacity>
+          {doc.pdf_url && (doc as { txt_file_url?: string | null }).txt_file_url && (
+            <TouchableOpacity
+              onPress={handleOpenTxt}
+              style={{
+                backgroundColor: '#334155',
+                borderRadius: 12,
+                padding: 12,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#94A3B8', fontWeight: '500' }}>Open TXT</Text>
+            </TouchableOpacity>
+          )}
+          {doc.content_text && !doc.pdf_url && (
+            <TouchableOpacity
+              onPress={handleGeneratePdf}
+              disabled={generatingPdf}
+              style={{
+                backgroundColor: '#334155',
+                borderRadius: 12,
+                padding: 12,
+                alignItems: 'center',
+                marginTop: 8,
+              }}
+            >
+              {generatingPdf ? (
+                <ActivityIndicator color="#3B82F6" size="small" />
+              ) : (
+                <Text style={{ color: '#3B82F6', fontWeight: '600' }}>Generate PDF</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
 
         {(doc.is_signed || doc.expiration_date) && (
           <View style={{ marginBottom: 24 }}>
