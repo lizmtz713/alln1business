@@ -17,6 +17,7 @@ function RootNavigator() {
       <Stack.Screen name="reconciliation" options={{ headerShown: false }} />
       <Stack.Screen name="customers" options={{ headerShown: false }} />
       <Stack.Screen name="vendors" options={{ headerShown: false }} />
+      <Stack.Screen name="invoice/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

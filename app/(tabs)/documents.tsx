@@ -1,12 +1,290 @@
-import { View, Text } from 'react-native';
+import { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  useInvoices,
+  useInvoiceStats,
+} from '../../src/hooks/useInvoices';
+import { hasSupabaseEnv } from '../../src/services/env';
+import type { InvoiceWithCustomer } from '../../src/types/invoices';
+import { format, parseISO } from 'date-fns';
+
+type DocSegment = 'all' | 'invoices' | 'bills' | 'contracts' | 'forms';
+
+const SEGMENTS: { id: DocSegment; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'invoices', label: 'Invoices' },
+  { id: 'bills', label: 'Bills' },
+  { id: 'contracts', label: 'Contracts' },
+  { id: 'forms', label: 'Forms' },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: '#64748B',
+  sent: '#3B82F6',
+  viewed: '#3B82F6',
+  paid: '#10B981',
+  overdue: '#EF4444',
+  cancelled: '#94A3B8',
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const color = STATUS_COLORS[status] ?? '#64748B';
+  return (
+    <View style={{ backgroundColor: color, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '500', textTransform: 'capitalize' }}>
+        {status}
+      </Text>
+    </View>
+  );
+}
+
+function InvoiceCard({
+  invoice,
+  onPress,
+}: {
+  invoice: InvoiceWithCustomer;
+  onPress: () => void;
+}) {
+  const customer = invoice.customers as { company_name?: string; contact_name?: string } | null;
+  const customerName =
+    customer?.company_name || customer?.contact_name || 'No customer';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: '#1E293B',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#F8FAFC', fontWeight: '600', fontSize: 16 }}>
+            {invoice.invoice_number}
+          </Text>
+          <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 4 }} numberOfLines={1}>
+            {customerName}
+          </Text>
+        </View>
+        <StatusBadge status={invoice.status} />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+        <Text style={{ color: '#10B981', fontWeight: '600', fontSize: 16 }}>
+          ${Number(invoice.total).toFixed(2)}
+        </Text>
+        <Text style={{ color: '#64748B', fontSize: 12 }}>
+          Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function DocumentsScreen() {
+  const router = useRouter();
+  const [segment, setSegment] = useState<DocSegment>('invoices');
+  const [search, setSearch] = useState('');
+
+  const { data: invoices = [], isLoading } = useInvoices({
+    search: segment === 'invoices' && search ? search : undefined,
+  });
+  const { data: stats = { draft: 0, sent: 0, overdue: 0, paid: 0 } } = useInvoiceStats();
+
+  const filteredInvoices = useMemo(() => {
+    if (segment !== 'invoices' && segment !== 'all') return [];
+    return invoices;
+  }, [invoices, segment]);
+
+  const invoicesForAll = useMemo(() => invoices.slice(0, 5), [invoices]);
+
+  if (!hasSupabaseEnv) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0F172A', padding: 24, justifyContent: 'center' }}>
+        <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold' }}>Documents</Text>
+        <Text style={{ color: '#94A3B8', marginTop: 8 }}>Connect Supabase for documents.</Text>
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 items-center justify-center bg-slate-900 p-6">
-      <Text className="text-center text-xl font-semibold text-white">
-        Documents
-      </Text>
-      <Text className="mt-2 text-center text-slate-400">Coming soon</Text>
+    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
+          Documents
+        </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 20 }}
+        >
+          {SEGMENTS.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              onPress={() => setSegment(s.id)}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 12,
+                backgroundColor: segment === s.id ? '#3B82F6' : '#1E293B',
+                marginRight: 8,
+              }}
+            >
+              <Text style={{ color: '#F8FAFC', fontWeight: '500' }}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {segment === 'invoices' && (
+          <>
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Draft</Text>
+                <Text style={{ color: '#F8FAFC', fontWeight: '600', fontSize: 18 }}>{stats.draft}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Sent</Text>
+                <Text style={{ color: '#F8FAFC', fontWeight: '600', fontSize: 18 }}>{stats.sent}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Overdue</Text>
+                <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 18 }}>{stats.overdue}</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#1E293B', borderRadius: 12, padding: 12 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>Paid</Text>
+                <Text style={{ color: '#10B981', fontWeight: '600', fontSize: 18 }}>{stats.paid}</Text>
+              </View>
+            </View>
+
+            <TextInput
+              style={{
+                backgroundColor: '#1E293B',
+                borderRadius: 12,
+                padding: 12,
+                color: '#F8FAFC',
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#334155',
+              }}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search invoices..."
+              placeholderTextColor="#64748B"
+            />
+
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
+            ) : filteredInvoices.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Text style={{ color: '#94A3B8', marginBottom: 16 }}>
+                  {segment === 'invoices' ? 'No invoices yet' : 'No documents'}
+                </Text>
+                {segment === 'invoices' && (
+                  <TouchableOpacity
+                    onPress={() => router.push('/(modals)/create-invoice' as never)}
+                    style={{
+                      backgroundColor: '#3B82F6',
+                      borderRadius: 12,
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>Create Invoice</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <>
+                {filteredInvoices.map((inv) => (
+                  <InvoiceCard
+                    key={inv.id}
+                    invoice={inv}
+                    onPress={() => router.push(`/invoice/${inv.id}` as never)}
+                  />
+                ))}
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/create-invoice' as never)}
+                  style={{
+                    backgroundColor: '#334155',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginTop: 8,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#3B82F6', fontWeight: '500' }}>Create Invoice</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </>
+        )}
+
+        {segment === 'all' && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={{ color: '#F8FAFC', fontWeight: '600', marginBottom: 12 }}>Invoices</Text>
+            {invoicesForAll.length === 0 && !isLoading ? (
+              <Text style={{ color: '#64748B', marginBottom: 16 }}>No invoices</Text>
+            ) : (
+              invoicesForAll.map((inv) => (
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  onPress={() => router.push(`/invoice/${inv.id}` as never)}
+                />
+              ))
+            )}
+            <TouchableOpacity
+              onPress={() => router.push('/(modals)/create-invoice' as never)}
+              style={{
+                backgroundColor: '#334155',
+                borderRadius: 12,
+                padding: 12,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#3B82F6' }}>Create Invoice</Text>
+            </TouchableOpacity>
+            <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
+              Bills
+            </Text>
+            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+            <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
+              Contracts
+            </Text>
+            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+            <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
+              Forms
+            </Text>
+            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+          </View>
+        )}
+
+        {(segment === 'bills' || segment === 'contracts' || segment === 'forms') && (
+          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+            <Text style={{ color: '#94A3B8' }}>Coming soon</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
