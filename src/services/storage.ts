@@ -131,3 +131,39 @@ export async function uploadToDocumentsBucket(params: {
     return null;
   }
 }
+
+/** Upload generated text as a .txt file to the documents bucket. Returns public URL or null. */
+export async function uploadTextToDocumentsBucket(params: {
+  userId: string;
+  filename: string;
+  content: string;
+}): Promise<string | null> {
+  if (!hasSupabaseConfig) return null;
+
+  try {
+    const slug = params.filename.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.txt$/, '') || 'document';
+    const path = `${params.userId}/${Date.now()}-${slug}.txt`;
+    const encoder = new TextEncoder();
+    const arrayBuffer = encoder.encode(params.content).buffer;
+
+    const { data, error } = await supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .upload(path, arrayBuffer, {
+        contentType: 'text/plain; charset=utf-8',
+        upsert: false,
+      });
+
+    if (error) {
+      if (__DEV__) console.warn('[Storage] uploadTextToDocumentsBucket error:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .getPublicUrl(data.path);
+    return urlData.publicUrl;
+  } catch (e) {
+    if (__DEV__) console.warn('[Storage] uploadTextToDocumentsBucket error:', e);
+    return null;
+  }
+}

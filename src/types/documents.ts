@@ -31,6 +31,9 @@ export type Document = {
   signed_by: string | null;
   tags: string[] | null;
   ai_summary: string | null;
+  content_text: string | null;
+  template_id: string | null;
+  generated_by_ai: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -58,6 +61,9 @@ export type DocumentInsert = {
   signed_by?: string | null;
   tags?: string[] | null;
   ai_summary?: string | null;
+  content_text?: string | null;
+  template_id?: string | null;
+  generated_by_ai?: boolean;
 };
 
 export type DocumentUpdate = Partial<

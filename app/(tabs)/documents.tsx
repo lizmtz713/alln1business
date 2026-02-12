@@ -583,19 +583,35 @@ export default function DocumentsScreen() {
                 <Text style={{ color: '#94A3B8', marginBottom: 16 }}>No contracts yet</Text>
                 <TouchableOpacity
                   onPress={() => router.push('/(modals)/upload-document' as never)}
-                  style={{ backgroundColor: '#3B82F6', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+                  style={{ backgroundColor: '#3B82F6', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, marginBottom: 12 }}
                 >
                   <Text style={{ color: '#fff', fontWeight: '600' }}>Upload Document</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/ai-draft' as never)}
+                  style={{ backgroundColor: '#334155', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+                >
+                  <Text style={{ color: '#3B82F6', fontWeight: '600' }}>AI Draft</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              contracts.map((d) => (
-                <DocumentCard
-                  key={d.id}
-                  doc={d}
-                  onPress={() => router.push(`/document/${d.id}` as never)}
-                />
-              ))
+              <>
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                  <TouchableOpacity
+                    onPress={() => router.push('/(modals)/ai-draft' as never)}
+                    style={{ flex: 1, backgroundColor: '#334155', borderRadius: 12, padding: 12, alignItems: 'center' }}
+                  >
+                    <Text style={{ color: '#3B82F6', fontWeight: '500' }}>AI Draft</Text>
+                  </TouchableOpacity>
+                </View>
+                {contracts.map((d) => (
+                  <DocumentCard
+                    key={d.id}
+                    doc={d}
+                    onPress={() => router.push(`/document/${d.id}` as never)}
+                  />
+                ))}
+              </>
             )}
           </>
         )}
