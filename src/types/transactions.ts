@@ -13,6 +13,7 @@ export type Transaction = {
   is_reconciled: boolean;
   reconciled_date: string | null;
   receipt_url: string | null;
+  bank_statement_id: string | null;
   invoice_id: string | null;
   bill_id: string | null;
   ai_categorized: boolean;
@@ -45,6 +46,7 @@ export type TransactionInsert = {
   tax_deductible?: boolean;
   notes?: string | null;
   receipt_url?: string | null;
+  bank_statement_id?: string | null;
 };
 
 export type TransactionUpdate = Partial<

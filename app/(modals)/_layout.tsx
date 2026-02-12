@@ -5,6 +5,7 @@ export default function ModalsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="add-expense" />
       <Stack.Screen name="add-income" />
+      <Stack.Screen name="add-bank-account" />
       <Stack.Screen name="upload-statement" />
       <Stack.Screen name="transaction/[id]" />
     </Stack>

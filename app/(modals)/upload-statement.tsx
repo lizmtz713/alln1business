@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  FlatList,
   TextInput,
   Alert,
 } from 'react-native';
@@ -16,6 +15,7 @@ import { parseCSVStatement, type ParsedTransaction } from '../../src/services/pa
 import { categorizeTransactionsBatch } from '../../src/services/openai';
 import { useUploadStatement } from '../../src/hooks/useUploadStatement';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { useBankAccounts } from '../../src/hooks/useBankAccounts';
 import { hasSupabaseEnv } from '../../src/services/env';
 import {
   EXPENSE_CATEGORIES,
@@ -51,9 +51,18 @@ export default function UploadStatementScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const uploadMutation = useUploadStatement();
+  const { data: bankAccounts = [] } = useBankAccounts();
   const [step, setStep] = useState<'select' | 'processing' | 'review' | 'import'>('select');
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [bulkCategory, setBulkCategory] = useState('');
+  const [bankAccountId, setBankAccountId] = useState<string | null>(null);
+  const [filename, setFilename] = useState<string>('');
+  const [parseMetadata, setParseMetadata] = useState<{
+    startDate?: string;
+    endDate?: string;
+    startingBalance?: number;
+    endingBalance?: number;
+  }>({});
 
   const selectFile = useCallback(async () => {
     try {
@@ -66,11 +75,15 @@ export default function UploadStatementScreen() {
 
       setStep('processing');
       const uri = result.assets[0].uri;
+      const name = result.assets[0].name ?? '';
+      setFilename(name);
+
       const content = await FileSystem.readAsStringAsync(uri, {
         encoding: 'utf8',
       });
 
-      const { transactions } = parseCSVStatement(content);
+      const { transactions, metadata } = parseCSVStatement(content);
+      setParseMetadata(metadata ?? {});
       if (transactions.length === 0) {
         Alert.alert('No Data', 'No valid transactions found in the CSV.');
         setStep('select');
@@ -139,20 +152,26 @@ export default function UploadStatementScreen() {
 
     setStep('import');
     try {
-      await uploadMutation.mutateAsync(
-        selected.map((r) => ({
+      await uploadMutation.mutateAsync({
+        rows: selected.map((r) => ({
           date: r.date,
           description: r.description,
           amount: r.amount,
           type: r.type,
           category: r.category,
           vendor: r.description,
-        }))
-      );
+        })),
+        filename: filename || undefined,
+        bankAccountId: bankAccountId ?? undefined,
+        startDate: parseMetadata.startDate ?? null,
+        endDate: parseMetadata.endDate ?? null,
+        startingBalance: parseMetadata.startingBalance ?? null,
+        endingBalance: parseMetadata.endingBalance ?? null,
+      });
       Alert.alert(
         'Success',
         `Imported ${selected.length} transaction(s).`,
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)' as never) }]
       );
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
@@ -177,8 +196,54 @@ export default function UploadStatementScreen() {
           <Text style={sharedStyles.back}>← Back</Text>
         </TouchableOpacity>
         <Text style={sharedStyles.title}>Upload Statement</Text>
+
+        {bankAccounts.length > 0 ? (
+          <>
+            <Text style={sharedStyles.sub}>Bank Account (optional)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <TouchableOpacity
+                onPress={() => setBankAccountId(null)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: !bankAccountId ? '#3B82F6' : '#1E293B',
+                  marginRight: 8,
+                }}
+              >
+                <Text style={{ color: '#F8FAFC' }}>None</Text>
+              </TouchableOpacity>
+              {bankAccounts.map((a) => (
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => setBankAccountId(a.id)}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    backgroundColor: bankAccountId === a.id ? '#3B82F6' : '#1E293B',
+                    marginRight: 8,
+                  }}
+                >
+                  <Text style={{ color: '#F8FAFC' }}>{a.account_name}</Text>
+                  {a.last_four && (
+                    <Text style={{ color: '#94A3B8', fontSize: 12 }}>••••{a.last_four}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </>
+        ) : (
+          <TouchableOpacity
+            onPress={() => router.push('/(modals)/add-bank-account' as never)}
+            style={[sharedStyles.button, { backgroundColor: '#334155' }]}
+          >
+            <Text style={sharedStyles.buttonText}>Add Bank Account</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={sharedStyles.sub}>
-          Select a CSV file from your bank. We'll detect columns for Date, Description, and Amount (or Debit/Credit).
+          Select a CSV file from your bank.
         </Text>
         <TouchableOpacity style={sharedStyles.button} onPress={selectFile}>
           <Text style={sharedStyles.buttonText}>Select CSV File</Text>

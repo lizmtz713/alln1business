@@ -1,9 +1,12 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { useBankAccounts } from '../../src/hooks/useBankAccounts';
+import { hasSupabaseEnv } from '../../src/services/env';
 import { router } from 'expo-router';
 
 export default function MoreScreen() {
   const { user, signOut } = useAuth();
+  const { data: bankAccounts = [] } = useBankAccounts();
 
   const handleSignOut = async () => {
     await signOut();
@@ -11,17 +14,81 @@ export default function MoreScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-900 p-6">
-      <Text className="text-xl font-semibold text-white">More</Text>
-      <Text className="mt-2 text-slate-400">Coming soon</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: '#0F172A' }} contentContainerStyle={{ padding: 24 }}>
+      <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold' }}>More</Text>
+
+      {hasSupabaseEnv && (
+        <>
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
+            Bank Accounts
+          </Text>
+          {bankAccounts.map((a) => (
+            <View
+              key={a.id}
+              style={{
+                backgroundColor: '#1E293B',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ color: '#F8FAFC', fontWeight: '600' }}>{a.account_name}</Text>
+              {a.bank_name && (
+                <Text style={{ color: '#94A3B8', fontSize: 14 }}>{a.bank_name}</Text>
+              )}
+              {a.last_four && (
+                <Text style={{ color: '#64748B', fontSize: 12 }}>••••{a.last_four}</Text>
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => router.push('/(modals)/add-bank-account' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ color: '#3B82F6', textAlign: 'center', fontWeight: '500' }}>
+              Add Bank Account
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginBottom: 12 }}>
+            Reconciliation
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/reconciliation' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Bank Reconciliation
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       {user && (
         <TouchableOpacity
-          className="mt-8 rounded-xl bg-slate-800 py-3"
           onPress={handleSignOut}
+          style={{
+            backgroundColor: '#1E293B',
+            borderRadius: 12,
+            padding: 16,
+            marginTop: 16,
+          }}
         >
-          <Text className="text-center font-medium text-red-400">Sign Out</Text>
+          <Text style={{ color: '#EF4444', textAlign: 'center', fontWeight: '500' }}>
+            Sign Out
+          </Text>
         </TouchableOpacity>
       )}
-    </View>
+    </ScrollView>
   );
 }
