@@ -159,15 +159,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'Supabase not configured.' };
     }
 
-    const redirectUri = AuthSession.makeRedirectUri({
-      scheme: 'alln1business',
+    const redirectTo = AuthSession.makeRedirectUri({
       path: 'google-auth',
+      scheme: 'alln1business',
     });
+    if (__DEV__) console.log('[Auth] Google redirectTo:', redirectTo);
 
     const res = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: redirectUri,
+        redirectTo,
         queryParams: { prompt: 'consent' },
         skipBrowserRedirect: true,
       },
@@ -178,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: res.error?.message ?? 'Could not start Google sign in.' };
     }
 
-    const result = await WebBrowser.openAuthSessionAsync(url, redirectUri, { showInRecents: true });
+    const result = await WebBrowser.openAuthSessionAsync(url, redirectTo, { showInRecents: true });
 
     if (result?.type === 'success') {
       const { access_token, refresh_token } = extractParamsFromUrl(result.url);

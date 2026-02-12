@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as AuthSession from 'expo-auth-session';
 import { useAuth } from '../src/providers/AuthProvider';
 import { supabase, hasSupabaseConfig } from '../src/services/supabase';
 
@@ -18,7 +19,13 @@ export default function StatusScreen() {
     async function runChecks() {
       const results: Record<string, CheckResult> = {};
 
+      const redirectTo = AuthSession.makeRedirectUri({
+        path: 'google-auth',
+        scheme: 'alln1business',
+      });
+
       results.supabase_env = hasSupabaseConfig ? { ok: true } : { ok: false, message: 'Missing EXPO_PUBLIC_SUPABASE_* in .env.local' };
+      results.google_redirect = { ok: true, message: redirectTo };
       results.session = session ? { ok: true } : { ok: false, message: 'Not signed in' };
       results.profile = profile ? { ok: true } : { ok: false, message: session ? 'Profile missing — run docs/supabase-profiles-schema.sql' : 'N/A' };
 
@@ -77,6 +84,25 @@ export default function StatusScreen() {
       ) : (
         <>
           {Object.entries(checks).map(([key, r]) => (
+            key === 'google_redirect' ? (
+              <View
+                key={key}
+                style={{
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  backgroundColor: '#1E293B',
+                  borderRadius: 12,
+                  marginBottom: 8,
+                }}
+              >
+                <Text style={{ color: '#F8FAFC', fontWeight: '500', marginBottom: 4 }}>Google OAuth redirectTo</Text>
+                <Text style={{ color: '#94A3B8', fontSize: 11 }} numberOfLines={2} selectable>
+                  {(r as CheckResult).message ?? '-'}
+                </Text>
+              </View>
+            ) : (
             <View
               key={key}
               style={{
@@ -99,6 +125,7 @@ export default function StatusScreen() {
                 )}
               </View>
             </View>
+            )
           ))}
 
           {!allOk && missing.length > 0 && (

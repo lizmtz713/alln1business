@@ -35,7 +35,7 @@ const CHALLENGES = [
 ];
 
 export default function OnboardingScreen() {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, profileLoadError } = useAuth();
 
   useEffect(() => {
     if (!user?.id) {
@@ -53,6 +53,7 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (!user?.id) return;
+    if (profileLoadError === 'profiles_table_missing') return;
     setSaveError(null);
     setSaving(true);
     try {
@@ -91,6 +92,30 @@ export default function OnboardingScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-slate-900">
         <Text className="text-slate-400">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (profileLoadError === 'profiles_table_missing') {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-900 p-8">
+        <Text className="mb-4 text-center text-xl font-bold text-white">Database Setup Required</Text>
+        <Text className="mb-6 text-center text-slate-400">
+          The profiles table is missing. Run the schema in Supabase before completing onboarding.
+        </Text>
+        <Text className="mb-2 text-center text-sm text-slate-500">File to run:</Text>
+        <Text className="mb-6 font-mono text-blue-400" selectable>
+          docs/supabase-profiles-schema.sql
+        </Text>
+        <Text className="text-center text-slate-500 text-sm">
+          Supabase Dashboard → SQL Editor → paste schema → Run
+        </Text>
+        <TouchableOpacity
+          className="mt-8 rounded-xl bg-slate-700 py-3 px-6"
+          onPress={() => router.replace('/(auth)/login')}
+        >
+          <Text className="text-white">Back to Login</Text>
+        </TouchableOpacity>
       </View>
     );
   }

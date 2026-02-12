@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, Image } from 'react-native';
 import { useAuth } from '../providers/AuthProvider';
+import { useToast } from './ui';
 
 type GoogleSignInButtonProps = {
   onSuccess?: () => void;
@@ -16,6 +17,7 @@ export function GoogleSignInButton({
   loading: externalLoading = false,
 }: GoogleSignInButtonProps) {
   const { signInWithGoogle } = useAuth();
+  const toast = useToast();
   const [internalLoading, setInternalLoading] = useState(false);
   const loading = externalLoading || internalLoading;
 
@@ -24,6 +26,7 @@ export function GoogleSignInButton({
     const { error } = await signInWithGoogle();
     setInternalLoading(false);
     if (error) {
+      toast.show(error, 'error');
       onError?.(error);
     } else if (onSuccess) {
       onSuccess();
