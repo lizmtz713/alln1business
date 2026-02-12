@@ -1,6 +1,54 @@
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
 export const hasOpenAIKey = Boolean(OPENAI_API_KEY);
 
+let chatCompletionInFlight = false;
+
+export type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
+
+export type ChatCompletionOptions = {
+  model?: string;
+  maxTokens?: number;
+};
+
+export async function chatCompletion(
+  messages: ChatMessage[],
+  opts?: ChatCompletionOptions
+): Promise<string> {
+  if (!hasOpenAIKey) {
+    return 'Add EXPO_PUBLIC_OPENAI_API_KEY to your .env file to enable AI chat. I could answer questions about your business data, suggest next steps, and help you draft documents.';
+  }
+  if (chatCompletionInFlight) {
+    return 'Please wait for the previous response to finish.';
+  }
+  chatCompletionInFlight = true;
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: opts?.model ?? 'gpt-4o-mini',
+        messages,
+        max_tokens: opts?.maxTokens ?? 600,
+      }),
+    });
+    if (!res.ok) {
+      if (__DEV__) console.warn('[OpenAI] chatCompletion API error:', res.status);
+      return 'Sorry, I had trouble getting a response. Please try again.';
+    }
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const text = data.choices?.[0]?.message?.content?.trim() ?? '';
+    return text || 'I could not generate a response. Please try again.';
+  } catch (e) {
+    if (__DEV__) console.warn('[OpenAI] chatCompletion error:', e);
+    return 'An error occurred. Please check your connection and try again.';
+  } finally {
+    chatCompletionInFlight = false;
+  }
+}
+
 const EXPENSE_CATS =
   'supplies, travel, meals, utilities, software, contractors, marketing, insurance, rent, equipment, professional, taxes, payroll, shipping, vehicle, office, bank_fees, other';
 const INCOME_CATS = 'sales, services, other_income';
