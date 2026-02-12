@@ -101,8 +101,8 @@ export default function AddExpenseScreen() {
         receipt_url: receiptUrl || null,
       });
       router.back();
-    } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+    } catch {
+      // Toast shown by mutation onError
     }
   };
 

@@ -1,19 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
-  FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   Modal,
   Pressable,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { getCategoryName } from '../../src/lib/categories';
+import { Skeleton, EmptyState } from '../../src/components/ui';
+import { OfflineBanner } from '../../src/components/OfflineBanner';
 import type { Transaction } from '../../src/types/transactions';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 
@@ -140,11 +141,8 @@ export default function TransactionsScreen() {
 
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
-  const renderSection = ({
-    item: section,
-  }: {
-    item: { label: string; data: Transaction[] };
-  }) => (
+  const renderSection = useCallback(
+    ({ item: section }: { item: { label: string; data: Transaction[] } }) => (
     <View style={{ marginBottom: 16 }}>
       <Text
         style={{
@@ -161,15 +159,15 @@ export default function TransactionsScreen() {
         <TransactionRow
           key={tx.id}
           item={tx}
-          onPress={() =>
-            router.push(
-              `/(modals)/transaction/${tx.id}` as never
-            )
-          }
+          onPress={() => router.push(`/(modals)/transaction/${tx.id}` as never)}
         />
       ))}
     </View>
+    ),
+    [router]
   );
+
+  const keyExtractor = useCallback((item: { label: string; data: Transaction[] }) => item.label, []);
 
   if (!hasSupabaseEnv) {
     return (
@@ -200,6 +198,7 @@ export default function TransactionsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+      <OfflineBanner />
       <View style={{ padding: 16 }}>
         <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold' }}>
           Transactions
@@ -270,26 +269,25 @@ export default function TransactionsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color="#3B82F6" />
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 24 }}>
+          <Skeleton height={60} style={{ marginBottom: 12 }} />
+          <Skeleton height={60} style={{ marginBottom: 12 }} />
+          <Skeleton height={60} style={{ marginBottom: 12 }} />
+          <Skeleton height={60} style={{ marginBottom: 12 }} />
+          <Skeleton height={60} width="70%" />
         </View>
       ) : grouped.length === 0 ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 24,
-          }}
-        >
-          <Text style={{ color: '#94A3B8', textAlign: 'center' }}>
-            No transactions yet.{'\n'}Tap + to add an expense or income.
-          </Text>
-        </View>
+        <EmptyState
+          title="No transactions yet"
+          body="Tap + to add an expense or income, or upload a bank statement."
+          icon="card-outline"
+          ctaLabel="Add Expense"
+          onPress={() => router.push('/(modals)/add-expense' as never)}
+        />
       ) : (
-        <FlatList
+        <FlashList
           data={grouped}
-          keyExtractor={(item) => item.label}
+          keyExtractor={keyExtractor}
           renderItem={renderSection}
           contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={

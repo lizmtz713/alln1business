@@ -1,10 +1,12 @@
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { format } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useDashboardInsights, useDismissInsight } from '../../src/hooks/useInsights';
 import { hasSupabaseEnv } from '../../src/services/env';
+import { Skeleton, EmptyState } from '../../src/components/ui';
+import { OfflineBanner } from '../../src/components/OfflineBanner';
 import type { DashboardInsight } from '../../src/services/insights';
 
 const INSIGHT_ICONS: Record<string, 'trophy' | 'warning' | 'bulb-outline' | 'flash' | 'information-circle'> = {
@@ -89,7 +91,9 @@ export default function DashboardScreen() {
   ];
 
   return (
-    <ScrollView className="flex-1 bg-slate-900">
+    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+      <OfflineBanner />
+      <ScrollView style={{ flex: 1 }}>
       <View className="p-4">
         <Text className="text-2xl font-bold text-white">
           {greeting}, {name}
@@ -101,8 +105,9 @@ export default function DashboardScreen() {
             <Text className="mb-3 text-lg font-semibold text-white">AI Insights</Text>
             {insightsLoading ? (
               <View className="rounded-xl bg-slate-800 p-6">
-                <ActivityIndicator size="small" color="#3B82F6" />
-                <Text className="mt-2 text-center text-sm text-slate-400">Loading insights…</Text>
+                <Skeleton height={24} style={{ marginBottom: 12 }} />
+                <Skeleton height={16} width="80%" style={{ marginBottom: 8 }} />
+                <Skeleton height={16} width="60%" />
               </View>
             ) : insights.length > 0 ? (
               insights.map((insight) => (
@@ -118,9 +123,11 @@ export default function DashboardScreen() {
                 />
               ))
             ) : (
-              <View className="rounded-xl bg-slate-800 p-4">
-                <Text className="text-sm text-slate-400">No insights for today. Check back later.</Text>
-              </View>
+              <EmptyState
+                title="No insights for today"
+                body="Check back later for personalized tips."
+                icon="bulb-outline"
+              />
             )}
           </View>
         )}
@@ -170,5 +177,6 @@ export default function DashboardScreen() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }

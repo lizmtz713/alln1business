@@ -3,7 +3,8 @@ import '../global.css';
 import { Stack } from 'expo-router';
 import 'react-native-reanimated';
 import { QueryProvider } from '../src/providers/QueryProvider';
-import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
+import { AuthProvider } from '../src/providers/AuthProvider';
+import { ToastProvider } from '../src/components/ui';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -32,7 +33,9 @@ export default function RootLayout() {
   return (
     <QueryProvider>
       <AuthProvider>
-        <RootNavigator />
+        <ToastProvider>
+          <RootNavigator />
+        </ToastProvider>
       </AuthProvider>
     </QueryProvider>
   );

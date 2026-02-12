@@ -1,10 +1,9 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../providers/AuthProvider';
+import { useToast } from '../components/ui';
 import { supabase } from '../services/supabase';
+import { normalizeError } from '../lib/errors';
+import { hapticSuccess } from '../lib/haptics';
 import type {
   Transaction,
   TransactionFilters,
@@ -88,6 +87,7 @@ export function useTransaction(id: string | undefined) {
 export function useCreateTransaction() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (input: Omit<TransactionInsert, 'user_id'>) => {
@@ -114,6 +114,11 @@ export function useCreateTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      toast.show('Saved', 'success');
+      hapticSuccess();
+    },
+    onError: (e) => {
+      toast.show(normalizeError(e), 'error');
     },
   });
 }
@@ -121,6 +126,7 @@ export function useCreateTransaction() {
 export function useUpdateTransaction() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({
@@ -157,6 +163,11 @@ export function useUpdateTransaction() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEY, data.user_id, data.id],
       });
+      toast.show('Saved', 'success');
+      hapticSuccess();
+    },
+    onError: (e) => {
+      toast.show(normalizeError(e), 'error');
     },
   });
 }
@@ -164,6 +175,7 @@ export function useUpdateTransaction() {
 export function useDeleteTransaction() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -183,6 +195,11 @@ export function useDeleteTransaction() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      toast.show('Deleted', 'success');
+      hapticSuccess();
+    },
+    onError: (e) => {
+      toast.show(normalizeError(e), 'error');
     },
   });
 }
