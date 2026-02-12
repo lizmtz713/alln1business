@@ -2,6 +2,40 @@
 
 Use this checklist to verify the app works end-to-end before release or demo.
 
+## Production Usability (iPhone / Expo Go)
+
+### Onboarding
+- [ ] Challenge screen: tap options show selected state (blue border, checkmark)
+- [ ] "Let's Get Started" proceeds and completes onboarding
+- [ ] Keyboard dismisses on tap outside, KeyboardAvoidingView works
+
+### Add Expense / Add Income
+- [ ] Modal opens from Transactions FAB
+- [ ] Form saves successfully with toast "Saved"
+- [ ] Keyboard dismisses on tap, Save button visible
+- [ ] Receipt upload: permissions requested, toast on failure
+- [ ] Never freezes; errors show in toast
+
+### Receipt Scan
+- [ ] Take Photo / Choose Library: permissions requested, toast on deny
+- [ ] Upload to receipts bucket works (run docs/supabase-storage-receipts.sql if needed)
+- [ ] Clear toast if bucket/policy missing
+- [ ] Review step saves transaction
+
+### Navigation
+- [ ] Back button below notch (SafeAreaView)
+- [ ] Swipe-from-left gesture goes back on modals
+- [ ] Transactions: "All Types" / "All Status" filters (no duplicate "All" labels)
+
+### Documents
+- [ ] Document detail: Open PDF/File with guards, toast on failure
+- [ ] Share PDF button opens share sheet (expo-sharing)
+- [ ] Generate PDF: error handling, toast on failure
+
+### Invoices
+- [ ] Invoice PDF: Generate, Open, Share PDF
+- [ ] Share PDF opens share sheet
+
 ## Auth Flow
 - [ ] Sign up creates account
 - [ ] Login works with correct credentials
@@ -79,3 +113,10 @@ Use this checklist to verify the app works end-to-end before release or demo.
 - [ ] App runs in Expo Go
 - [ ] Dev build guidance shown for notifications/push (if applicable)
 - [ ] No silent failures when features require dev build
+
+## Supabase Migrations / Buckets Required
+
+- **profiles**: Run `docs/supabase-profiles-schema.sql` first.
+- **profiles (optional)**: Run `docs/supabase-profiles-onboarding-challenge-migration.sql` to persist onboarding challenge.
+- **receipts bucket**: Create bucket "receipts" (public), run `docs/supabase-storage-receipts.sql` for policies.
+- **documents bucket**: Create bucket "documents", run `docs/supabase-storage-documents.sql` for policies.

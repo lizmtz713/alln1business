@@ -10,6 +10,9 @@ import {
   Modal,
   Linking,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { useToast } from '../../src/components/ui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   useInvoice,
@@ -46,6 +49,7 @@ export default function InvoiceDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const toast = useToast();
   const { data: invoice, isLoading } = useInvoice(id);
   const updateInvoice = useUpdateInvoice();
   const recordPayment = useRecordInvoicePayment();
@@ -73,14 +77,42 @@ export default function InvoiceDetailScreen() {
       });
       if (pdfUrl) {
         await updateInvoice.mutateAsync({ id, updates: { pdf_url: pdfUrl } });
-        Linking.openURL(pdfUrl);
+        try {
+          await Linking.openURL(pdfUrl);
+        } catch {
+          toast.show('PDF generated. Use Share to open.', 'success');
+        }
       } else {
-        Alert.alert('Error', 'Failed to upload PDF');
+        toast.show('Failed to upload PDF. Run docs/supabase-storage-documents.sql.', 'error');
       }
     } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+      toast.show((e as Error)?.message ?? 'Failed to generate PDF.', 'error');
     } finally {
       setGeneratingPdf(false);
+    }
+  };
+
+  const handleShareInvoicePdf = async () => {
+    const url = invoice?.pdf_url;
+    if (!url) {
+      toast.show('Generate PDF first.', 'error');
+      return;
+    }
+    try {
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        Linking.openURL(url);
+        return;
+      }
+      const filename = `invoice-${invoice?.invoice_number ?? id}.pdf`;
+      const localPath = `${FileSystem.cacheDirectory}${Date.now()}-${filename}`;
+      await FileSystem.downloadAsync(url, localPath);
+      await Sharing.shareAsync(localPath, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Share Invoice ${invoice?.invoice_number ?? ''}`,
+      });
+    } catch (e) {
+      toast.show((e as Error)?.message ?? 'Share failed.', 'error');
     }
   };
 
@@ -364,9 +396,15 @@ export default function InvoiceDetailScreen() {
               <Text style={{ color: '#10B981', fontSize: 12, marginBottom: 8, textAlign: 'center' }}>PDF ready</Text>
               <TouchableOpacity
                 onPress={() => invoice.pdf_url && Linking.openURL(invoice.pdf_url)}
+                style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 8 }}
+              >
+                <Text style={{ color: '#3B82F6' }}>Open PDF</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleShareInvoicePdf}
                 style={{ backgroundColor: '#334155', borderRadius: 12, padding: 16, alignItems: 'center' }}
               >
-                <Text style={{ color: '#3B82F6' }}>Download PDF</Text>
+                <Text style={{ color: '#3B82F6' }}>Share PDF</Text>
               </TouchableOpacity>
             </>
           ) : (

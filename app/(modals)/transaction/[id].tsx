@@ -9,7 +9,12 @@ import {
   Alert,
   Image,
   Linking,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -18,6 +23,7 @@ import {
   useDeleteTransaction,
 } from '../../../src/hooks/useTransactions';
 import { useAuth } from '../../../src/providers/AuthProvider';
+import { useToast } from '../../../src/components/ui';
 import { hasSupabaseEnv } from '../../../src/services/env';
 import { uploadReceipt } from '../../../src/services/storage';
 import {
@@ -35,6 +41,7 @@ export default function TransactionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const toast = useToast();
   const { data: tx, isLoading } = useTransaction(id);
   const updateTx = useUpdateTransaction();
   const deleteTx = useDeleteTransaction();
@@ -71,10 +78,13 @@ export default function TransactionDetailScreen() {
   }, [tx]);
 
   const pickReceipt = async () => {
-    if (!user) return;
+    if (!user?.id) {
+      toast.show('You must be signed in to attach receipts.', 'error');
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission', 'Camera roll access is needed to attach receipts.');
+      toast.show('Camera roll access is needed to attach receipts.', 'error');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -83,14 +93,16 @@ export default function TransactionDetailScreen() {
       quality: 0.8,
     });
     if (result.canceled) return;
-    const uri = result.assets[0].uri;
+    const uri = result.assets[0]?.uri;
+    if (!uri) return;
     setReceiptPreviewUri(uri);
     setUploadingReceipt(true);
     try {
       const url = await uploadReceipt(user.id, uri);
       setReceiptUrl(url);
-    } catch {
+    } catch (e) {
       setReceiptPreviewUri(receiptUrl);
+      toast.show((e as Error)?.message ?? 'Receipt upload failed.', 'error');
     } finally {
       setUploadingReceipt(false);
     }
@@ -125,7 +137,7 @@ export default function TransactionDetailScreen() {
       });
       router.back();
     } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+      toast.show((e as Error)?.message ?? 'Failed to save.', 'error');
     }
   };
 
@@ -144,7 +156,7 @@ export default function TransactionDetailScreen() {
               await deleteTx.mutateAsync(tx.id);
               router.back();
             } catch (e) {
-              Alert.alert('Error', (e as Error).message);
+              toast.show((e as Error)?.message ?? 'Delete failed.', 'error');
             }
           },
         },
@@ -184,8 +196,10 @@ export default function TransactionDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }} edges={['top']}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -405,7 +419,9 @@ export default function TransactionDetailScreen() {
             Delete
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

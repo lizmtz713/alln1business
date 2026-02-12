@@ -5,9 +5,12 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Linking,
+  Alert,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { useToast } from '../../src/components/ui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDocument, useDeleteDocument, useUpdateDocument } from '../../src/hooks/useDocuments';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -20,19 +23,65 @@ export default function DocumentDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const toast = useToast();
   const { data: doc, isLoading } = useDocument(id);
   const deleteDoc = useDeleteDocument();
   const updateDoc = useUpdateDocument();
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
-  const handleOpen = () => {
+  /** Open file_url/pdf_url/txt_file_url with guards and toast on failure. */
+  const handleOpen = async () => {
     const url = doc?.pdf_url || doc?.file_url;
-    if (url) Linking.openURL(url);
+    if (!url) {
+      toast.show('No file or PDF available to open.', 'error');
+      return;
+    }
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) await Linking.openURL(url);
+      else toast.show('Cannot open this file. Try Share instead.', 'error');
+    } catch (e) {
+      toast.show((e as Error)?.message ?? 'Failed to open file.', 'error');
+    }
   };
 
-  const handleOpenTxt = () => {
+  const handleOpenTxt = async () => {
     const txtUrl = (doc as { txt_file_url?: string | null })?.txt_file_url;
-    if (txtUrl) Linking.openURL(txtUrl);
+    if (!txtUrl) {
+      toast.show('No text file available.', 'error');
+      return;
+    }
+    try {
+      const canOpen = await Linking.canOpenURL(txtUrl);
+      if (canOpen) await Linking.openURL(txtUrl);
+      else toast.show('Cannot open text file.', 'error');
+    } catch (e) {
+      toast.show((e as Error)?.message ?? 'Failed to open file.', 'error');
+    }
+  };
+
+  const handleShare = async () => {
+    const url = doc?.pdf_url || doc?.file_url;
+    if (!url) {
+      toast.show('No file to share. Generate PDF first.', 'error');
+      return;
+    }
+    try {
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        Linking.openURL(url);
+        return;
+      }
+      const filename = `${doc?.name ?? 'document'}.pdf`;
+      const localPath = `${FileSystem.cacheDirectory}${Date.now()}-${filename}`;
+      await FileSystem.downloadAsync(url, localPath);
+      await Sharing.shareAsync(localPath, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Share ${doc?.name ?? 'Document'}`,
+      });
+    } catch (e) {
+      toast.show((e as Error)?.message ?? 'Share failed. Try opening the file.', 'error');
+    }
   };
 
   const handleGeneratePdf = async () => {
@@ -59,12 +108,16 @@ export default function DocumentDetailScreen() {
             txt_file_url: doc.file_type === 'txt' ? doc.file_url : null,
           },
         });
-        Linking.openURL(pdfUrl);
+        try {
+          await Linking.openURL(pdfUrl);
+        } catch {
+          toast.show('PDF generated. Use Share to open.', 'success');
+        }
       } else {
-        Alert.alert('Error', 'Failed to upload PDF');
+        toast.show('Failed to upload PDF. Run docs/supabase-storage-documents.sql.', 'error');
       }
     } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+      toast.show((e as Error)?.message ?? 'Failed to generate PDF.', 'error');
     } finally {
       setGeneratingPdf(false);
     }
@@ -85,7 +138,7 @@ export default function DocumentDetailScreen() {
               await deleteDoc.mutateAsync(id);
               router.back();
             } catch (e) {
-              Alert.alert('Error', (e as Error).message);
+              toast.show((e as Error)?.message ?? 'Delete failed.', 'error');
             }
           },
         },
@@ -157,13 +210,27 @@ export default function DocumentDetailScreen() {
               borderRadius: 12,
               padding: 16,
               alignItems: 'center',
-              marginBottom: doc.pdf_url && (doc as { txt_file_url?: string }).txt_file_url ? 8 : 0,
+              marginBottom: 8,
             }}
           >
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
-              {doc.pdf_url ? 'Open PDF' : 'Open File'}
+              {doc.pdf_url || doc.file_url ? 'Open PDF / File' : 'Generate PDF first'}
             </Text>
           </TouchableOpacity>
+          {(doc.pdf_url || doc.file_url) && (
+            <TouchableOpacity
+              onPress={handleShare}
+              style={{
+                backgroundColor: '#334155',
+                borderRadius: 12,
+                padding: 14,
+                alignItems: 'center',
+                marginBottom: (doc as { txt_file_url?: string }).txt_file_url ? 8 : 0,
+              }}
+            >
+              <Text style={{ color: '#3B82F6', fontWeight: '600' }}>Share PDF</Text>
+            </TouchableOpacity>
+          )}
           {doc.pdf_url && (doc as { txt_file_url?: string | null }).txt_file_url && (
             <TouchableOpacity
               onPress={handleOpenTxt}

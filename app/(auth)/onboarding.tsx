@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -57,23 +59,42 @@ export default function OnboardingScreen() {
     setSaveError(null);
     setSaving(true);
     try {
+      const basePayload = {
+        id: user.id,
+        email: (user as { email?: string }).email ?? '',
+        business_name: businessName || null,
+        business_type: businessType,
+        entity_type: entityType,
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      };
       const { error } = await supabase
         .from('profiles')
         .upsert(
-          {
-            id: user.id,
-            email: (user as { email?: string }).email ?? '',
-            business_name: businessName || null,
-            business_type: businessType,
-            entity_type: entityType,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          },
+          challenge
+            ? { ...basePayload, onboarding_challenge: challenge }
+            : basePayload,
           { onConflict: 'id' }
         );
       if (error) {
-        const isTableMissing = /relation.*does not exist|42P01/i.test(error.message ?? '');
-        setSaveError(isTableMissing ? 'Profiles table missing. Run docs/supabase-profiles-schema.sql in Supabase.' : error.message);
+        const msg = error.message ?? '';
+        const isTableMissing = /relation.*does not exist|42P01/i.test(msg);
+        const isUnknownCol = /column.*onboarding_challenge|42703/i.test(msg);
+        let errText = msg;
+        if (isTableMissing) errText = 'Profiles table missing. Run docs/supabase-profiles-schema.sql in Supabase.';
+        else if (isUnknownCol) {
+          // Retry without challenge so onboarding completes
+          const { error: retryErr } = await supabase
+            .from('profiles')
+            .upsert(basePayload, { onConflict: 'id' });
+          if (!retryErr) {
+            await refreshProfile();
+            router.replace('/(tabs)' as never);
+            return;
+          }
+          errText = 'Run docs/supabase-profiles-onboarding-challenge-migration.sql to save challenge.';
+        }
+        setSaveError(errText);
         setSaving(false);
         return;
       }
@@ -121,10 +142,14 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View className="flex-1 bg-slate-900">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-slate-900"
+    >
       <ScrollView
-        contentContainerStyle={{ padding: 24, paddingTop: 48 }}
+        contentContainerStyle={{ padding: 24, paddingTop: 48, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {step === 0 && (
           <>
@@ -192,21 +217,39 @@ export default function OnboardingScreen() {
           </>
         )}
 
+        {/* Step 3: Challenge selection — ROOT CAUSE: TouchableOpacity worked but had no selected-state
+            UI; user couldn't tell what was selected. Also ensure touches aren't blocked by
+            overlapping views. Fix: show selected styling (border + bg), use activeOpacity for feedback. */}
         {step === 3 && (
           <>
             <Text className="mb-6 text-2xl font-bold text-white">
               What&apos;s your biggest challenge?
             </Text>
-            {CHALLENGES.map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                className="mb-3 flex-row items-center rounded-xl border border-slate-600 bg-slate-800 p-4"
-                onPress={() => setChallenge(c.id)}
-              >
-                <Text className="mr-3 text-2xl">{c.icon}</Text>
-                <Text className="text-white">{c.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {CHALLENGES.map((c) => {
+              const isSelected = challenge === c.id;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setChallenge(c.id)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 16,
+                    marginBottom: 12,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: isSelected ? '#3B82F6' : '#334155',
+                    backgroundColor: isSelected ? '#1E3A5F' : pressed ? '#334155' : '#1E293B',
+                  })}
+                >
+                  <Text style={{ fontSize: 24, marginRight: 12 }}>{c.icon}</Text>
+                  <Text style={{ color: '#F8FAFC', fontSize: 16 }}>{c.label}</Text>
+                  {isSelected && (
+                    <Text style={{ marginLeft: 'auto', color: '#3B82F6', fontWeight: '600' }}>✓</Text>
+                  )}
+                </Pressable>
+              );
+            })}
             {saveError ? (
               <View className="mb-4 rounded-lg bg-red-500/20 p-3">
                 <Text className="text-red-400 text-sm">{saveError}</Text>
@@ -224,6 +267,6 @@ export default function OnboardingScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

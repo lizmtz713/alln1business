@@ -6,13 +6,18 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCreateTransaction } from '../../src/hooks/useTransactions';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { useToast } from '../../src/components/ui';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { uploadReceipt } from '../../src/services/storage';
 import { EXPENSE_CATEGORIES, getCategoryName } from '../../src/lib/categories';
@@ -25,6 +30,7 @@ import { format } from 'date-fns';
 export default function AddExpenseScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const toast = useToast();
   const createTx = useCreateTransaction();
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [amount, setAmount] = useState('');
@@ -61,10 +67,13 @@ export default function AddExpenseScreen() {
   const canSave = hasSupabaseEnv && user && amount && parseFloat(amount) > 0;
 
   const pickReceipt = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      toast.show('You must be signed in to attach receipts.', 'error');
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission', 'Camera roll access is needed to attach receipts.');
+      toast.show('Camera roll access is needed to attach receipts.', 'error');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -80,18 +89,27 @@ export default function AddExpenseScreen() {
     try {
       const url = await uploadReceipt(user.id, uri);
       setReceiptUrl(url);
-    } catch {
+    } catch (e) {
       setReceiptUri(null);
+      toast.show((e as Error)?.message ?? 'Receipt upload failed.', 'error');
     } finally {
       setUploadingReceipt(false);
     }
   };
 
+  /** ROOT CAUSE: Submit could freeze if mutation threw before onError, or loading stayed stuck.
+      Fix: try/catch/finally, guard user, always show toast on failure, ensure loading resets. */
   const handleSave = async () => {
+    if (!user?.id) {
+      toast.show('You must be signed in to add expenses.', 'error');
+      return;
+    }
     if (!canSave) return;
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0) return;
-
+    if (isNaN(amt) || amt <= 0) {
+      toast.show('Enter a valid amount.', 'error');
+      return;
+    }
     try {
       await createTx.mutateAsync({
         date,
@@ -103,8 +121,9 @@ export default function AddExpenseScreen() {
         receipt_url: receiptUrl || null,
       });
       router.back();
-    } catch {
-      // Toast shown by mutation onError
+    } catch (e) {
+      const msg = (e as Error)?.message ?? 'Failed to save expense.';
+      toast.show(msg, 'error');
     }
   };
 
@@ -122,8 +141,17 @@ export default function AddExpenseScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }} edges={['top']}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+          keyboardShouldPersistTaps="handled"
+        >
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -330,7 +358,9 @@ export default function AddExpenseScreen() {
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Save</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

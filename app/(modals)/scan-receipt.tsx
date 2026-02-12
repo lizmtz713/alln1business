@@ -8,12 +8,18 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import { useCreateTransaction } from '../../src/hooks/useTransactions';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { useToast } from '../../src/components/ui';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { uploadReceipt } from '../../src/services/storage';
 import { processReceiptImage, hasOpenAIKey } from '../../src/services/openai';
@@ -37,6 +43,7 @@ function inferMimeType(uri: string): 'image/jpeg' | 'image/png' | 'image/webp' {
 export default function ScanReceiptScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const toast = useToast();
   const createTx = useCreateTransaction();
 
   const [step, setStep] = useState<Step>('pick');
@@ -70,7 +77,7 @@ export default function ScanReceiptScreen() {
   const pickFromLibrary = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission', 'Camera roll access is needed to select receipts.');
+      toast.show('Camera roll access is needed to select receipts.', 'error');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,7 +94,7 @@ export default function ScanReceiptScreen() {
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission', 'Camera access is needed to photograph receipts.');
+      toast.show('Camera access is needed to photograph receipts.', 'error');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -102,7 +109,7 @@ export default function ScanReceiptScreen() {
   };
 
   const continueToProcess = () => {
-    if (!imageUri || !user) return;
+    if (!imageUri || !user?.id) return;
     setStep('processing');
     setUploadError(null);
     setProcessingError(null);
@@ -113,14 +120,14 @@ export default function ScanReceiptScreen() {
         setProcessingError('Connect Supabase to upload and process receipts.');
         return;
       }
-
-      const url = await uploadReceipt(user.id, imageUri);
-      if (!url) {
-        setUploadError('Upload failed. Check that the receipts bucket exists and policies are set.');
+      try {
+        const url = await uploadReceipt(user.id, imageUri);
+        setReceiptUrl(url);
+      } catch (e) {
+        setUploadError((e as Error)?.message ?? 'Upload failed. Run docs/supabase-storage-receipts.sql.');
         setStep('pick');
         return;
       }
-      setReceiptUrl(url);
 
       if (hasOpenAIKey) {
         try {
@@ -193,7 +200,7 @@ export default function ScanReceiptScreen() {
 
       router.replace(`/(modals)/transaction/${tx.id}` as never);
     } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+      toast.show((e as Error)?.message ?? 'Failed to save expense.', 'error');
     }
   };
 
@@ -218,8 +225,8 @@ export default function ScanReceiptScreen() {
 
   if (step === 'pick') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }} edges={['top']}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
           <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
             <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
           </TouchableOpacity>
@@ -305,13 +312,13 @@ export default function ScanReceiptScreen() {
             </>
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (step === 'processing') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', padding: 24 }} edges={['top']}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={{ position: 'absolute', top: 48, left: 24 }}
@@ -325,14 +332,16 @@ export default function ScanReceiptScreen() {
         <Text style={{ color: '#94A3B8', marginTop: 8, textAlign: 'center' }}>
           {hasOpenAIKey ? 'AI is extracting vendor, date, and amount.' : 'Saving your receipt.'}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   // Step: Review & Save
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }} edges={['top']}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity
           onPress={() => setStep('pick')}
           style={{ marginBottom: 24 }}
@@ -561,6 +570,8 @@ export default function ScanReceiptScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

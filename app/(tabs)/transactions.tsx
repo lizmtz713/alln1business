@@ -8,6 +8,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTransactions } from '../../src/hooks/useTransactions';
@@ -201,7 +202,7 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F172A' }} edges={['top']}>
       <OfflineBanner />
       <View style={{ padding: 16 }}>
         <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold' }}>
@@ -224,6 +225,7 @@ export default function TransactionsScreen() {
           placeholderTextColor="#64748B"
         />
 
+        {/* Type + Reconciled filters — deduped: single row with type | status, no duplicate "All" labels */}
         <View style={{ flexDirection: 'row', marginTop: 12, gap: 8, flexWrap: 'wrap' }}>
           {(['all', 'income', 'expense'] as const).map((t) => (
             <TouchableOpacity
@@ -236,13 +238,8 @@ export default function TransactionsScreen() {
                 backgroundColor: typeFilter === t ? '#3B82F6' : '#1E293B',
               }}
             >
-              <Text
-                style={{
-                  color: typeFilter === t ? '#fff' : '#94A3B8',
-                  fontSize: 14,
-                }}
-              >
-                {t === 'all' ? 'All' : t === 'income' ? 'Income' : 'Expenses'}
+              <Text style={{ color: typeFilter === t ? '#fff' : '#94A3B8', fontSize: 14 }}>
+                {t === 'all' ? 'All Types' : t === 'income' ? 'Income' : 'Expenses'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -259,13 +256,8 @@ export default function TransactionsScreen() {
                 backgroundColor: reconciledFilter === r ? '#334155' : '#1E293B',
               }}
             >
-              <Text
-                style={{
-                  color: reconciledFilter === r ? '#fff' : '#94A3B8',
-                  fontSize: 14,
-                }}
-              >
-                {r === 'all' ? 'All' : r === 'reconciled' ? 'Reconciled' : 'Unreconciled'}
+              <Text style={{ color: reconciledFilter === r ? '#fff' : '#94A3B8', fontSize: 14 }}>
+                {r === 'all' ? 'All Status' : r === 'reconciled' ? 'Reconciled' : 'Unreconciled'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -406,6 +398,6 @@ export default function TransactionsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }

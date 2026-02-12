@@ -14,38 +14,40 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+/** Upload receipt to bucket "receipts" at path {userId}/{timestamp}.jpg.
+ * Throws on error with a clear message. Run docs/supabase-storage-receipts.sql if bucket/policies missing. */
 export async function uploadReceipt(
   userId: string,
   localUri: string,
   _fileName?: string
 ): Promise<string | null> {
-  if (!hasSupabaseConfig) return null;
-
-  try {
-    const path = `${userId}/${Date.now()}.jpg`;
-    const base64 = await FileSystem.readAsStringAsync(localUri, {
-      encoding: 'base64',
-    });
-    const arrayBuffer = base64ToArrayBuffer(base64);
-
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, arrayBuffer, {
-        contentType: 'image/jpeg',
-        upsert: false,
-      });
-
-    if (error) {
-      if (__DEV__) console.warn('[Storage] Upload error:', error.message);
-      return null;
-    }
-
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
-    return urlData.publicUrl;
-  } catch (e) {
-    if (__DEV__) console.warn('[Storage] uploadReceipt error:', e);
-    return null;
+  if (!hasSupabaseConfig) {
+    throw new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_* to .env.local.');
   }
+
+  const path = `${userId}/${Date.now()}.jpg`;
+  const base64 = await FileSystem.readAsStringAsync(localUri, {
+    encoding: 'base64',
+  });
+  const arrayBuffer = base64ToArrayBuffer(base64);
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, arrayBuffer, {
+      contentType: 'image/jpeg',
+      upsert: false,
+    });
+
+  if (error) {
+    const msg = error.message ?? 'Upload failed';
+    const hint = /bucket|does not exist|policy/i.test(msg)
+      ? ' Run docs/supabase-storage-receipts.sql in Supabase SQL Editor.'
+      : '';
+    throw new Error(`${msg}${hint}`);
+  }
+
+  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
+  return urlData.publicUrl;
 }
 
 /** Upload a document (e.g. W-9) to receipts bucket. Returns public URL or null. */
