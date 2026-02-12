@@ -111,11 +111,28 @@ export default function MoreScreen() {
               backgroundColor: '#334155',
               borderRadius: 12,
               padding: 16,
-              marginBottom: 24,
+              marginBottom: 8,
             }}
           >
             <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
               Bank Reconciliation
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
+            AI & Automation
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/rules' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Categorization Rules
             </Text>
           </TouchableOpacity>
         </>

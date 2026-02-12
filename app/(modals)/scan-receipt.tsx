@@ -18,6 +18,10 @@ import { hasSupabaseEnv } from '../../src/services/env';
 import { uploadReceipt } from '../../src/services/storage';
 import { processReceiptImage, hasOpenAIKey } from '../../src/services/openai';
 import { supabase } from '../../src/services/supabase';
+import { applyCategoryRules } from '../../src/services/rules';
+import { buildSuggestedRuleFromEdit } from '../../src/services/rules';
+import { useActiveCategoryRules, useCreateCategoryRule } from '../../src/hooks/useCategoryRules';
+import { LearnCategoryPrompt } from '../../src/components/LearnCategoryPrompt';
 import { EXPENSE_CATEGORIES, getCategoryName } from '../../src/lib/categories';
 import { format } from 'date-fns';
 
@@ -50,6 +54,11 @@ export default function ScanReceiptScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [taxDeductible, setTaxDeductible] = useState(true);
   const [aiConfidence, setAiConfidence] = useState<number | null>(null);
+  const [showLearnPrompt, setShowLearnPrompt] = useState(false);
+  const [categoryFromRule, setCategoryFromRule] = useState(false);
+
+  const { data: rules = [] } = useActiveCategoryRules();
+  const createRule = useCreateCategoryRule();
 
   const canSave =
     hasSupabaseEnv &&
@@ -120,13 +129,22 @@ export default function ScanReceiptScreen() {
           });
           const mime = inferMimeType(imageUri);
           const parsed = await processReceiptImage({ imageBase64: base64, mimeType: mime });
-          setVendor(parsed.vendor ?? '');
+          const vendorVal = parsed.vendor ?? '';
+          const notesVal = parsed.notes ?? '';
+          setVendor(vendorVal);
           setDate(parsed.date ?? format(new Date(), 'yyyy-MM-dd'));
           setAmount(parsed.amount != null ? String(parsed.amount) : '');
-          setCategory(parsed.category ?? 'other');
-          setNotes(parsed.notes ?? '');
+          setNotes(notesVal);
           setItems(parsed.items ?? []);
           setAiConfidence(0.9);
+          const ruleMatch = rules.length > 0
+            ? applyCategoryRules(
+                { vendor: vendorVal || null, description: notesVal || null, type: 'expense' },
+                rules
+              )
+            : { category: null };
+          setCategory(ruleMatch.category ?? parsed.category ?? 'other');
+          setCategoryFromRule(Boolean(ruleMatch.category));
         } catch {
           setProcessingError('AI processing failed. You can still fill in the fields manually.');
         }
@@ -403,7 +421,19 @@ export default function ScanReceiptScreen() {
           }}
           onPress={() => setShowCategoryPicker(!showCategoryPicker)}
         >
-          <Text style={{ color: '#F8FAFC' }}>{getCategoryName(category)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: '#F8FAFC' }}>{getCategoryName(category)}</Text>
+            {categoryFromRule && (
+              <View style={{ backgroundColor: '#10B98133', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#10B981', fontSize: 10 }}>Learned</Text>
+              </View>
+            )}
+            {aiConfidence != null && !categoryFromRule && (
+              <View style={{ backgroundColor: '#3B82F633', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#3B82F6', fontSize: 10 }}>AI</Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
 
         {showCategoryPicker && (
@@ -412,8 +442,13 @@ export default function ScanReceiptScreen() {
               <TouchableOpacity
                 key={c.id}
                 onPress={() => {
+                  const oldCat = category;
                   setCategory(c.id);
+                  setCategoryFromRule(false);
                   setShowCategoryPicker(false);
+                  if (oldCat !== c.id && (vendor.trim() || notes.trim())) {
+                    setShowLearnPrompt(true);
+                  }
                 }}
                 style={{
                   padding: 12,
@@ -426,6 +461,29 @@ export default function ScanReceiptScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {showLearnPrompt && (vendor.trim() || notes.trim()) && (
+          <LearnCategoryPrompt
+            onYes={async () => {
+              const rule = buildSuggestedRuleFromEdit({
+                newCategory: category,
+                vendor: vendor || null,
+                description: notes || null,
+                type: 'expense',
+              });
+              if (rule) {
+                try {
+                  await createRule.mutateAsync(rule);
+                  setShowLearnPrompt(false);
+                } catch {
+                  /* ignore */
+                }
+              }
+            }}
+            onNo={() => setShowLearnPrompt(false)}
+            isPending={createRule.isPending}
+          />
         )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Notes (optional)</Text>

@@ -26,6 +26,9 @@ import {
   getCategoryName,
   type CategoryItem,
 } from '../../../src/lib/categories';
+import { buildSuggestedRuleFromEdit } from '../../../src/services/rules';
+import { useCreateCategoryRule } from '../../../src/hooks/useCategoryRules';
+import { LearnCategoryPrompt } from '../../../src/components/LearnCategoryPrompt';
 import { format } from 'date-fns';
 
 export default function TransactionDetailScreen() {
@@ -45,6 +48,10 @@ export default function TransactionDetailScreen() {
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptPreviewUri, setReceiptPreviewUri] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [prevCategory, setPrevCategory] = useState<string | null>(null);
+  const [showLearnPrompt, setShowLearnPrompt] = useState(false);
+
+  const createRule = useCreateCategoryRule();
 
   const categories =
     tx?.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -54,7 +61,9 @@ export default function TransactionDetailScreen() {
       setDate(tx.date?.split('T')[0] ?? format(new Date(), 'yyyy-MM-dd'));
       setAmount(String(Math.abs(tx.amount)));
       setVendor(tx.vendor ?? '');
-      setCategory(tx.category ?? 'other');
+      const cat = tx.category ?? 'other';
+      setCategory(cat);
+      setPrevCategory(cat);
       setDescription(tx.description ?? '');
       setReceiptUrl(tx.receipt_url ?? null);
       setReceiptPreviewUri(tx.receipt_url ?? null);
@@ -258,8 +267,12 @@ export default function TransactionDetailScreen() {
               <TouchableOpacity
                 key={c.id}
                 onPress={() => {
+                  const oldCat = category;
                   setCategory(c.id);
                   setShowCategoryPicker(false);
+                  if (oldCat !== c.id && (vendor?.trim() || description?.trim())) {
+                    setShowLearnPrompt(true);
+                  }
                 }}
                 style={{
                   padding: 12,
@@ -272,6 +285,30 @@ export default function TransactionDetailScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {showLearnPrompt && (vendor?.trim() || description?.trim()) && (
+          <LearnCategoryPrompt
+            onYes={async () => {
+              const rule = buildSuggestedRuleFromEdit({
+                oldCategory: prevCategory,
+                newCategory: category,
+                vendor: vendor || null,
+                description: description || null,
+                type: tx!.type,
+              });
+              if (rule) {
+                try {
+                  await createRule.mutateAsync(rule);
+                  setShowLearnPrompt(false);
+                } catch {
+                  // ignore
+                }
+              }
+            }}
+            onNo={() => setShowLearnPrompt(false)}
+            isPending={createRule.isPending}
+          />
         )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Receipt</Text>

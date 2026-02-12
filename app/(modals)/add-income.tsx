@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,10 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { uploadReceipt } from '../../src/services/storage';
 import { INCOME_CATEGORIES, getCategoryName } from '../../src/lib/categories';
+import { applyCategoryRules } from '../../src/services/rules';
+import { buildSuggestedRuleFromEdit } from '../../src/services/rules';
+import { useActiveCategoryRules, useCreateCategoryRule } from '../../src/hooks/useCategoryRules';
+import { LearnCategoryPrompt } from '../../src/components/LearnCategoryPrompt';
 import { format } from 'date-fns';
 
 export default function AddIncomeScreen() {
@@ -31,6 +35,22 @@ export default function AddIncomeScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [showLearnPrompt, setShowLearnPrompt] = useState(false);
+
+  const { data: rules = [] } = useActiveCategoryRules();
+  const createRule = useCreateCategoryRule();
+
+  useEffect(() => {
+    if ((vendor.trim() || description.trim()) && rules.length > 0) {
+      const match = applyCategoryRules(
+        { vendor: vendor || null, description: description || null, type: 'income' },
+        rules
+      );
+      if (match.category) {
+        setCategory(match.category);
+      }
+    }
+  }, [vendor, description, rules]);
 
   const canSave = hasSupabaseEnv && user && amount && parseFloat(amount) > 0;
 
@@ -177,8 +197,12 @@ export default function AddIncomeScreen() {
               <TouchableOpacity
                 key={c.id}
                 onPress={() => {
+                  const oldCat = category;
                   setCategory(c.id);
                   setShowCategoryPicker(false);
+                  if (oldCat !== c.id && (vendor.trim() || description.trim())) {
+                    setShowLearnPrompt(true);
+                  }
                 }}
                 style={{
                   padding: 12,
@@ -191,6 +215,29 @@ export default function AddIncomeScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {showLearnPrompt && (vendor.trim() || description.trim()) && (
+          <LearnCategoryPrompt
+            onYes={async () => {
+              const rule = buildSuggestedRuleFromEdit({
+                newCategory: category,
+                vendor: vendor || null,
+                description: description || null,
+                type: 'income',
+              });
+              if (rule) {
+                try {
+                  await createRule.mutateAsync(rule);
+                  setShowLearnPrompt(false);
+                } catch {
+                  /* ignore */
+                }
+              }
+            }}
+            onNo={() => setShowLearnPrompt(false)}
+            isPending={createRule.isPending}
+          />
         )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Description (optional)</Text>

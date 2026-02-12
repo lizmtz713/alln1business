@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,10 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { uploadReceipt } from '../../src/services/storage';
 import { EXPENSE_CATEGORIES, getCategoryName } from '../../src/lib/categories';
+import { applyCategoryRules } from '../../src/services/rules';
+import { buildSuggestedRuleFromEdit } from '../../src/services/rules';
+import { useActiveCategoryRules, useCreateCategoryRule } from '../../src/hooks/useCategoryRules';
+import { LearnCategoryPrompt } from '../../src/components/LearnCategoryPrompt';
 import { format } from 'date-fns';
 
 export default function AddExpenseScreen() {
@@ -31,6 +35,28 @@ export default function AddExpenseScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [showLearnPrompt, setShowLearnPrompt] = useState(false);
+  const [categoryFromRule, setCategoryFromRule] = useState(false);
+
+  const { data: rules = [] } = useActiveCategoryRules();
+  const createRule = useCreateCategoryRule();
+
+  useEffect(() => {
+    if ((vendor.trim() || description.trim()) && rules.length > 0) {
+      const match = applyCategoryRules(
+        { vendor: vendor || null, description: description || null, type: 'expense' },
+        rules
+      );
+      if (match.category) {
+        setCategory(match.category);
+        setCategoryFromRule(true);
+      } else {
+        setCategoryFromRule(false);
+      }
+    } else {
+      setCategoryFromRule(false);
+    }
+  }, [vendor, description, rules]);
 
   const canSave = hasSupabaseEnv && user && amount && parseFloat(amount) > 0;
 
@@ -168,7 +194,14 @@ export default function AddExpenseScreen() {
           }}
           onPress={() => setShowCategoryPicker(!showCategoryPicker)}
         >
-          <Text style={{ color: '#F8FAFC' }}>{getCategoryName(category)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: '#F8FAFC' }}>{getCategoryName(category)}</Text>
+            {categoryFromRule && (
+              <View style={{ backgroundColor: '#10B98133', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#10B981', fontSize: 10 }}>Learned</Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
 
         {showCategoryPicker && (
@@ -177,8 +210,13 @@ export default function AddExpenseScreen() {
               <TouchableOpacity
                 key={c.id}
                 onPress={() => {
+                  const oldCat = category;
                   setCategory(c.id);
+                  setCategoryFromRule(false);
                   setShowCategoryPicker(false);
+                  if (oldCat !== c.id && (vendor.trim() || description.trim())) {
+                    setShowLearnPrompt(true);
+                  }
                 }}
                 style={{
                   padding: 12,
@@ -191,6 +229,29 @@ export default function AddExpenseScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        {showLearnPrompt && (vendor.trim() || description.trim()) && (
+          <LearnCategoryPrompt
+            onYes={async () => {
+              const rule = buildSuggestedRuleFromEdit({
+                newCategory: category,
+                vendor: vendor || null,
+                description: description || null,
+                type: 'expense',
+              });
+              if (rule) {
+                try {
+                  await createRule.mutateAsync(rule);
+                  setShowLearnPrompt(false);
+                } catch {
+                  /* ignore */
+                }
+              }
+            }}
+            onNo={() => setShowLearnPrompt(false)}
+            isPending={createRule.isPending}
+          />
         )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Description (optional)</Text>

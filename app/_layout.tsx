@@ -21,6 +21,7 @@ function RootNavigator() {
       <Stack.Screen name="bill/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="document/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="templates" options={{ headerShown: false }} />
+      <Stack.Screen name="rules" options={{ headerShown: false }} />
     </Stack>
   );
 }

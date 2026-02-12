@@ -61,26 +61,50 @@ const INCOME_CATS = 'sales, services, other_income';
 export type CategorizationResult = {
   category: string;
   confidence: number;
+  source?: 'rule' | 'ai';
+};
+
+export type CategoryRuleForMatch = {
+  id: string;
+  match_type: string;
+  match_value: string;
+  category: string;
+  applies_to: string;
+  is_active: boolean;
+  priority: number;
+  created_at: string;
 };
 
 export async function categorizeTransaction(
   vendor: string,
   amount: number,
-  description?: string | null
+  description?: string | null,
+  rules?: CategoryRuleForMatch[]
 ): Promise<CategorizationResult> {
+  const type = amount >= 0 ? 'income' : 'expense';
+  if (rules && rules.length > 0) {
+    const { applyCategoryRules } = await import('./rules');
+    const match = applyCategoryRules(
+      { vendor: vendor || null, description: description || null, type },
+      rules as Parameters<typeof applyCategoryRules>[1]
+    );
+    if (match.category) {
+      return { category: match.category, confidence: 0.99, source: 'rule' };
+    }
+  }
   if (!hasOpenAIKey) {
     return { category: 'other', confidence: 0 };
   }
 
   try {
-    const type = amount >= 0 ? 'INCOME' : 'EXPENSE';
+    const typeStr = type === 'income' ? 'INCOME' : 'EXPENSE';
     const cats = amount >= 0 ? INCOME_CATS : EXPENSE_CATS;
 
     const prompt = `Categorize this business transaction.
 Vendor: ${vendor}
 Amount: $${Math.abs(amount)}
 ${description ? `Description: ${description}` : ''}
-Type: ${type}
+Type: ${typeStr}
 Categories: ${cats}
 Return JSON only: {"category": "other", "confidence": 0.95}`;
 
@@ -111,7 +135,7 @@ Return JSON only: {"category": "other", "confidence": 0.95}`;
     const category = String(parsed.category ?? 'other').toLowerCase();
     const confidence = Math.min(1, Math.max(0, Number(parsed.confidence) ?? 0));
 
-    return { category, confidence };
+    return { category, confidence, source: 'ai' };
   } catch (e) {
     if (__DEV__) console.warn('[OpenAI] categorizeTransaction error:', e);
     return { category: 'other', confidence: 0 };
@@ -119,18 +143,45 @@ Return JSON only: {"category": "other", "confidence": 0.95}`;
 }
 
 export async function categorizeTransactionsBatch(
-  items: Array<{ vendor: string; amount: number; description?: string | null }>
+  items: Array<{ vendor: string; amount: number; description?: string | null }>,
+  rules?: CategoryRuleForMatch[]
 ): Promise<CategorizationResult[]> {
-  if (!hasOpenAIKey || items.length === 0) {
-    return items.map(() => ({ category: 'other', confidence: 0 }));
+  if (items.length === 0) return [];
+
+  const results: CategorizationResult[] = new Array(items.length);
+  const toSendToAI: { index: number; item: (typeof items)[0] }[] = [];
+
+  if (rules && rules.length > 0) {
+    const { applyCategoryRules } = await import('./rules');
+    items.forEach((item, i) => {
+      const type = item.amount >= 0 ? 'income' : 'expense';
+      const match = applyCategoryRules(
+        { vendor: item.vendor, description: item.description, type },
+        rules as Parameters<typeof applyCategoryRules>[1]
+      );
+      if (match.category) {
+        results[i] = { category: match.category, confidence: 0.99, source: 'rule' };
+      } else {
+        toSendToAI.push({ index: i, item });
+      }
+    });
+  } else {
+    items.forEach((item, i) => toSendToAI.push({ index: i, item }));
+  }
+
+  if (!hasOpenAIKey || toSendToAI.length === 0) {
+    toSendToAI.forEach(({ index }) => {
+      if (!results[index]) results[index] = { category: 'other', confidence: 0 };
+    });
+    return results;
   }
 
   try {
-    const list = items
+    const list = toSendToAI
       .slice(0, 20)
       .map(
-        (t, i) =>
-          `${i + 1}. Vendor: ${t.vendor}, Amount: $${Math.abs(t.amount)}${t.description ? `, Desc: ${t.description}` : ''}, Type: ${t.amount >= 0 ? 'INCOME' : 'EXPENSE'}`
+        (x, i) =>
+          `${i + 1}. Vendor: ${x.item.vendor}, Amount: $${Math.abs(x.item.amount)}${x.item.description ? `, Desc: ${x.item.description}` : ''}, Type: ${x.item.amount >= 0 ? 'INCOME' : 'EXPENSE'}`
       )
       .join('\n');
 
@@ -157,27 +208,40 @@ Return a JSON array only, one object per line item in order: [{"category":"other
 
     if (!res.ok) {
       if (__DEV__) console.warn('[OpenAI] Batch API error:', res.status);
-      return items.map(() => ({ category: 'other', confidence: 0 }));
+      toSendToAI.forEach(({ index }) => {
+        if (!results[index]) results[index] = { category: 'other', confidence: 0 };
+      });
+      return results;
     }
 
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const text = data.choices?.[0]?.message?.content?.trim() ?? '';
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return items.map(() => ({ category: 'other', confidence: 0 }));
+    if (!jsonMatch) {
+      toSendToAI.forEach(({ index }) => {
+        if (!results[index]) results[index] = { category: 'other', confidence: 0 };
+      });
+      return results;
+    }
 
     const parsed = JSON.parse(jsonMatch[0]) as Array<{ category?: string; confidence?: number }>;
-    const results: CategorizationResult[] = items.map((_, i) => {
+    toSendToAI.forEach(({ index }, i) => {
       const p = parsed[i];
-      if (!p) return { category: 'other', confidence: 0 };
-      return {
-        category: String(p.category ?? 'other').toLowerCase(),
-        confidence: Math.min(1, Math.max(0, Number(p.confidence) ?? 0)),
-      };
+      results[index] = p
+        ? {
+            category: String(p.category ?? 'other').toLowerCase(),
+            confidence: Math.min(1, Math.max(0, Number(p.confidence) ?? 0)),
+            source: 'ai' as const,
+          }
+        : { category: 'other', confidence: 0 };
     });
     return results;
   } catch (e) {
     if (__DEV__) console.warn('[OpenAI] categorizeTransactionsBatch error:', e);
-    return items.map(() => ({ category: 'other', confidence: 0 }));
+    toSendToAI.forEach(({ index }) => {
+      if (!results[index]) results[index] = { category: 'other', confidence: 0 };
+    });
+    return results;
   }
 }
 

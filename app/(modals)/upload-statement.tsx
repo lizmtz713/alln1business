@@ -13,6 +13,10 @@ import * as FileSystem from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import { parseCSVStatement, type ParsedTransaction } from '../../src/services/parser';
 import { categorizeTransactionsBatch } from '../../src/services/openai';
+import { applyCategoryRules } from '../../src/services/rules';
+import { buildSuggestedRuleFromEdit } from '../../src/services/rules';
+import { useActiveCategoryRules, useCreateCategoryRule } from '../../src/hooks/useCategoryRules';
+import { LearnCategoryPrompt } from '../../src/components/LearnCategoryPrompt';
 import { useUploadStatement } from '../../src/hooks/useUploadStatement';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { useBankAccounts } from '../../src/hooks/useBankAccounts';
@@ -29,6 +33,7 @@ type ReviewRow = ParsedTransaction & {
   selected: boolean;
   category: string;
   confidence: number;
+  source?: 'rule' | 'ai';
 };
 
 const sharedStyles = {
@@ -52,7 +57,10 @@ export default function UploadStatementScreen() {
   const { user } = useAuth();
   const uploadMutation = useUploadStatement();
   const { data: bankAccounts = [] } = useBankAccounts();
+  const { data: rules = [] } = useActiveCategoryRules();
+  const createRule = useCreateCategoryRule();
   const [step, setStep] = useState<'select' | 'processing' | 'review' | 'import'>('select');
+  const [learnPromptRowId, setLearnPromptRowId] = useState<string | null>(null);
   const [rows, setRows] = useState<ReviewRow[]>([]);
   const [bulkCategory, setBulkCategory] = useState('');
   const [bankAccountId, setBankAccountId] = useState<string | null>(null);
@@ -103,13 +111,15 @@ export default function UploadStatementScreen() {
           vendor: r.description,
           amount: r.type === 'expense' ? -r.amount : r.amount,
           description: null,
-        }))
+        })),
+        rules
       );
 
       catResults.forEach((res, i) => {
         if (i < withIds.length) {
           withIds[i].category = res.category;
           withIds[i].confidence = res.confidence;
+          withIds[i].source = res.source;
         }
       });
 
@@ -119,7 +129,7 @@ export default function UploadStatementScreen() {
       Alert.alert('Error', (e as Error).message);
       setStep('select');
     }
-  }, []);
+  }, [rules]);
 
   const toggleSelect = (id: string) => {
     setRows((prev) =>
@@ -127,10 +137,14 @@ export default function UploadStatementScreen() {
     );
   };
 
-  const setCategory = (id: string, category: string) => {
+  const setCategory = (id: string, category: string, prevCategory?: string) => {
     setRows((prev) =>
       prev.map((r) => (r.id === id ? { ...r, category } : r))
     );
+    if (prevCategory !== category) {
+      const row = rows.find((r) => r.id === id);
+      if (row?.description?.trim()) setLearnPromptRowId(id);
+    }
   };
 
   const selectAll = () => setRows((prev) => prev.map((r) => ({ ...r, selected: true })));
@@ -356,7 +370,7 @@ export default function UploadStatementScreen() {
                   {categories.map((c: CategoryItem) => (
                       <TouchableOpacity
                         key={c.id}
-                        onPress={() => setCategory(r.id, c.id)}
+                        onPress={() => setCategory(r.id, c.id, r.category)}
                         style={{
                           paddingHorizontal: 10,
                           paddingVertical: 6,
@@ -367,12 +381,43 @@ export default function UploadStatementScreen() {
                         <Text style={{ color: '#F8FAFC', fontSize: 12 }}>{c.name}</Text>
                       </TouchableOpacity>
                     ))}
-                  {r.confidence > 0 && (
+                  {r.source === 'rule' && (
+                    <View style={{ backgroundColor: '#10B98133', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: '#10B981', fontSize: 10 }}>Learned</Text>
+                    </View>
+                  )}
+                  {r.source === 'ai' && (
+                    <View style={{ backgroundColor: '#3B82F633', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <Text style={{ color: '#3B82F6', fontSize: 10 }}>AI</Text>
+                    </View>
+                  )}
+                  {r.confidence > 0 && !r.source && (
                     <Text style={{ color: '#94A3B8', fontSize: 10 }}>
                       {Math.round(r.confidence * 100)}%
                     </Text>
                   )}
                 </View>
+                {learnPromptRowId === r.id && (
+                  <LearnCategoryPrompt
+                    onYes={async () => {
+                      const rule = buildSuggestedRuleFromEdit({
+                        newCategory: r.category,
+                        description: r.description || null,
+                        type: r.type,
+                      });
+                      if (rule) {
+                        try {
+                          await createRule.mutateAsync(rule);
+                          setLearnPromptRowId(null);
+                        } catch {
+                          /* ignore */
+                        }
+                      }
+                    }}
+                    onNo={() => setLearnPromptRowId(null)}
+                    isPending={createRule.isPending}
+                  />
+                )}
               </View>
             ))}
           </ScrollView>
