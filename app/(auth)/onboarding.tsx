@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,12 @@ const CHALLENGES = [
 
 export default function OnboardingScreen() {
   const { user, refreshProfile } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) {
+      router.replace('/(auth)/login' as never);
+    }
+  }, [user?.id]);
   const [step, setStep] = useState(0);
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState<string | null>(null);
@@ -43,8 +49,11 @@ export default function OnboardingScreen() {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleComplete = async () => {
     if (!user?.id) return;
+    setSaveError(null);
     setSaving(true);
     try {
       const { error } = await supabase
@@ -61,16 +70,30 @@ export default function OnboardingScreen() {
           },
           { onConflict: 'id' }
         );
-      if (error && __DEV__) console.warn('[Onboarding] Profile upsert:', error.message);
+      if (error) {
+        const isTableMissing = /relation.*does not exist|42P01/i.test(error.message ?? '');
+        setSaveError(isTableMissing ? 'Profiles table missing. Run docs/supabase-profiles-schema.sql in Supabase.' : error.message);
+        setSaving(false);
+        return;
+      }
       await refreshProfile();
       router.replace('/(tabs)' as never);
     } catch (e) {
-      if (__DEV__) console.warn('[Onboarding] Update failed:', e);
-      router.replace('/(tabs)' as never);
+      const msg = (e as Error)?.message ?? 'Save failed';
+      const isTableMissing = /relation.*does not exist|42P01/i.test(msg);
+      setSaveError(isTableMissing ? 'Profiles table missing. Run docs/supabase-profiles-schema.sql in Supabase.' : msg);
     } finally {
       setSaving(false);
     }
   };
+
+  if (!user?.id) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-900">
+        <Text className="text-slate-400">Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-slate-900">
@@ -159,6 +182,11 @@ export default function OnboardingScreen() {
                 <Text className="text-white">{c.label}</Text>
               </TouchableOpacity>
             ))}
+            {saveError ? (
+              <View className="mb-4 rounded-lg bg-red-500/20 p-3">
+                <Text className="text-red-400 text-sm">{saveError}</Text>
+              </View>
+            ) : null}
             <TouchableOpacity
               className="mt-6 rounded-xl bg-blue-500 py-3"
               onPress={handleComplete}

@@ -61,6 +61,7 @@ export default function AddExpenseScreen() {
   const canSave = hasSupabaseEnv && user && amount && parseFloat(amount) > 0;
 
   const pickReceipt = async () => {
+    if (!user?.id) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission', 'Camera roll access is needed to attach receipts.');
@@ -72,11 +73,12 @@ export default function AddExpenseScreen() {
       quality: 0.8,
     });
     if (result.canceled) return;
-    const uri = result.assets[0].uri;
+    const uri = result.assets[0]?.uri;
+    if (!uri) return;
     setReceiptUri(uri);
     setUploadingReceipt(true);
     try {
-      const url = await uploadReceipt(user!.id, uri);
+      const url = await uploadReceipt(user.id, uri);
       setReceiptUrl(url);
     } catch {
       setReceiptUri(null);

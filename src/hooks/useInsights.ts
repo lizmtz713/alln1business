@@ -10,8 +10,15 @@ export function useDashboardInsights() {
 
   return useQuery({
     queryKey: [QUERY_KEY, 'today', userId],
-    queryFn: () => upsertInsightsForToday(userId),
+    queryFn: async () => {
+      try {
+        return await upsertInsightsForToday(userId);
+      } catch {
+        return [];
+      }
+    },
     enabled: Boolean(userId),
+    retry: false,
   });
 }
 

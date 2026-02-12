@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
+import { GoogleSignInButton } from '../../src/components/GoogleSignInButton';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, hasSupabaseConfig } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,11 +32,22 @@ export default function LoginScreen() {
     const { error: err } = await signIn(email.trim(), password);
     setLoading(false);
     if (err) {
-      setError(err.message ?? 'Sign in failed.');
+      setError(err?.message ?? 'Sign in failed.');
     } else {
       router.replace('/');
     }
   };
+
+  if (!hasSupabaseConfig) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-900 p-8">
+        <Text className="mb-4 text-2xl font-bold text-white">Connect Supabase</Text>
+        <Text className="text-center text-slate-400">
+          Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local, then restart.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -88,6 +100,12 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
+        <Link href={'/(auth)/forgot-password' as never} asChild>
+          <TouchableOpacity className="mb-4 self-end">
+            <Text className="text-blue-400 text-sm">Forgot password?</Text>
+          </TouchableOpacity>
+        </Link>
+
         <TouchableOpacity
           className="mb-4 rounded-xl bg-blue-500 py-3"
           onPress={handleSignIn}
@@ -110,9 +128,12 @@ export default function LoginScreen() {
 
         <View className="mt-8 items-center">
           <Text className="text-slate-500">or</Text>
-          <TouchableOpacity className="mt-3 rounded-xl border border-slate-600 px-6 py-3">
-            <Text className="text-slate-300">Continue with Google (coming soon)</Text>
-          </TouchableOpacity>
+          <View className="mt-3 w-full">
+            <GoogleSignInButton
+              onSuccess={() => router.replace('/')}
+              onError={(msg) => setError(msg)}
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -32,11 +32,15 @@ function groupByDate(transactions: Transaction[]): { label: string; data: Transa
     ([a], [b]) => (b > a ? 1 : -1)
   );
   return sorted.map(([date, data]) => {
-    const parsed = parseISO(date);
     let label = date;
-    if (isToday(parsed)) label = 'Today';
-    else if (isYesterday(parsed)) label = 'Yesterday';
-    else label = format(parsed, 'MMM d, yyyy');
+    try {
+      const parsed = parseISO(date);
+      if (isToday(parsed)) label = 'Today';
+      else if (isYesterday(parsed)) label = 'Yesterday';
+      else label = format(parsed, 'MMM d, yyyy');
+    } catch {
+      label = date;
+    }
     return { label, data };
   });
 }

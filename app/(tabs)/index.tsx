@@ -70,7 +70,7 @@ export default function DashboardScreen() {
   const name = profile?.full_name || profile?.business_name || user?.email?.split('@')[0] || 'there';
   const greeting = new Date().getHours() < 12 ? 'Good morning' : new Date().getHours() < 18 ? 'Good afternoon' : 'Good evening';
 
-  const { data: insights = [], isLoading: insightsLoading } = useDashboardInsights();
+  const { data: insights = [], isLoading: insightsLoading, isError: insightsError } = useDashboardInsights();
   const dismissMutation = useDismissInsight();
 
   const stats = [
@@ -103,7 +103,11 @@ export default function DashboardScreen() {
         {hasSupabaseEnv && (
           <View className="mt-6">
             <Text className="mb-3 text-lg font-semibold text-white">AI Insights</Text>
-            {insightsLoading ? (
+            {insightsError ? (
+              <View className="rounded-xl bg-slate-800 p-4">
+                <Text className="text-slate-400 text-sm">Insights unavailable. Run schema files in docs/ if tables are missing.</Text>
+              </View>
+            ) : insightsLoading ? (
               <View className="rounded-xl bg-slate-800 p-6">
                 <Skeleton height={24} style={{ marginBottom: 12 }} />
                 <Skeleton height={16} width="80%" style={{ marginBottom: 8 }} />

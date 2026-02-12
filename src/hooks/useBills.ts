@@ -18,11 +18,15 @@ function isOverdue(bill: Bill): boolean {
 }
 
 function isDueSoon(bill: Bill, days = 7): boolean {
-  if (bill.status !== 'pending') return false;
-  const due = parseISO(bill.due_date);
-  const today = new Date();
-  const future = addDays(today, days);
-  return !isBefore(due, today) && !isAfter(due, future);
+  if (bill.status !== 'pending' || !bill.due_date) return false;
+  try {
+    const due = parseISO(bill.due_date);
+    const today = new Date();
+    const future = addDays(today, days);
+    return !isBefore(due, today) && !isAfter(due, future);
+  } catch {
+    return false;
+  }
 }
 
 export function useBills(params?: {
@@ -54,7 +58,10 @@ export function useBills(params?: {
         .order('created_at', { ascending: false });
       if (params?.status) q = q.eq('status', params.status);
       const { data, error } = await q;
-      if (error) throw new Error(error.message ?? 'Failed to load bills');
+      if (error) {
+        if (/relation.*does not exist|42P01/i.test(error.message ?? '')) return [];
+        throw new Error(error.message ?? 'Failed to load bills');
+      }
       let list = (data ?? []) as BillWithVendor[];
       if (params?.search?.trim()) {
         const term = params.search.trim().toLowerCase();

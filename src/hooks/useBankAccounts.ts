@@ -25,9 +25,13 @@ export function useBankAccounts() {
         .order('is_primary', { ascending: false })
         .order('created_at', { ascending: false });
 
-      if (error) throw new Error(error.message ?? 'Failed to load bank accounts');
+      if (error) {
+        if (/relation.*does not exist|42P01/i.test(error.message ?? '')) return [];
+        throw new Error(error.message ?? 'Failed to load bank accounts');
+      }
       return (data ?? []) as BankAccount[];
     },
+    retry: false,
     enabled: Boolean(userId),
   });
 }

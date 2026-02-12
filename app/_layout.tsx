@@ -27,6 +27,8 @@ function RootNavigator() {
       <Stack.Screen name="year-end" options={{ headerShown: false }} />
       <Stack.Screen name="estimates" options={{ headerShown: false }} />
       <Stack.Screen name="compliance" options={{ headerShown: false }} />
+      <Stack.Screen name="status" options={{ headerShown: false }} />
+      <Stack.Screen name="change-password" options={{ headerShown: false }} />
     </Stack>
   );
 }

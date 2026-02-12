@@ -87,9 +87,10 @@ export default function InvoiceDetailScreen() {
   const handleMarkSent = async () => {
     if (!id || !user?.id) return;
     try {
-      const updates: { status: string; sent_date: string; pdf_url?: string } = {
-        status: 'sent',
+      const updates = {
+        status: 'sent' as const,
         sent_date: new Date().toISOString(),
+        pdf_url: undefined as string | undefined,
       };
       if (attachPdfOnSend && !invoice?.pdf_url) {
         const { localPath, filename } = await createInvoicePdf(id, user.id);
@@ -98,9 +99,9 @@ export default function InvoiceDetailScreen() {
           filename,
           localPath,
         });
-        if (pdfUrl) updates.pdf_url = pdfUrl;
+        if (pdfUrl) (updates as { pdf_url?: string }).pdf_url = pdfUrl;
       }
-      await updateInvoice.mutateAsync({ id, updates });
+      await updateInvoice.mutateAsync({ id, updates: { status: updates.status, sent_date: updates.sent_date, pdf_url: updates.pdf_url } });
     } catch (e) {
       Alert.alert('Error', (e as Error).message);
     }

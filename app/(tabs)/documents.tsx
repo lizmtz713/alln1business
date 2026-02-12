@@ -24,7 +24,17 @@ import { hasSupabaseEnv } from '../../src/services/env';
 import type { InvoiceWithCustomer } from '../../src/types/invoices';
 import type { BillWithVendor } from '../../src/types/bills';
 import type { DocumentWithRelations } from '../../src/types/documents';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
+
+function safeFormatDate(s: string | null | undefined, fmt: string): string {
+  if (!s) return '—';
+  try {
+    const d = parseISO(s);
+    return isValid(d) ? format(d, fmt) : '—';
+  } catch {
+    return '—';
+  }
+}
 
 type DocSegment = 'all' | 'invoices' | 'bills' | 'contracts' | 'forms';
 
@@ -100,7 +110,7 @@ function InvoiceCard({
           ${Number(invoice.total).toFixed(2)}
         </Text>
         <Text style={{ color: '#64748B', fontSize: 12 }}>
-          Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
+          Due {safeFormatDate(invoice.due_date, 'MMM d, yyyy')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -153,12 +163,12 @@ function DocumentCard({
         </View>
         <View style={{ backgroundColor: '#334155', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
           <Text style={{ color: '#94A3B8', fontSize: 11, textTransform: 'capitalize' }}>
-            {doc.doc_type.replace('_', ' ')}
+            {(doc.doc_type ?? 'document').replace('_', ' ')}
           </Text>
         </View>
       </View>
       <Text style={{ color: '#64748B', fontSize: 12, marginTop: 8 }}>
-        {format(parseISO(doc.created_at), 'MMM d, yyyy')}
+        {safeFormatDate(doc.created_at, 'MMM d, yyyy')}
       </Text>
     </TouchableOpacity>
   );
@@ -198,14 +208,14 @@ function BillCard({
           ${Number(bill.amount).toFixed(2)}
         </Text>
         <Text style={{ color: '#64748B', fontSize: 12 }}>
-          Due {format(parseISO(bill.due_date), 'MMM d, yyyy')}
+          Due {safeFormatDate(bill.due_date, 'MMM d, yyyy')}
         </Text>
       </View>
       {bill.payment_url && (
         <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation();
-            Linking.openURL(bill.payment_url!);
+            if (bill.payment_url) Linking.openURL(bill.payment_url);
           }}
           style={{ marginTop: 8 }}
         >

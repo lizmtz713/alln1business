@@ -61,7 +61,10 @@ export function useDocuments(filters?: {
       if (filters?.category) q = q.eq('category', filters.category);
 
       const { data, error } = await q;
-      if (error) throw new Error(error.message ?? 'Failed to load documents');
+      if (error) {
+        if (/relation.*does not exist|42P01/i.test(error.message ?? '')) return [];
+        throw new Error(error.message ?? 'Failed to load documents');
+      }
 
       let list = (data ?? []) as DocumentWithRelations[];
       if (filters?.search?.trim()) {

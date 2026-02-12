@@ -42,7 +42,10 @@ export function useInvoices(params?: { status?: InvoiceStatus; search?: string }
         .order('created_at', { ascending: false });
       if (params?.status) q = q.eq('status', params.status);
       const { data, error } = await q;
-      if (error) throw new Error(error.message ?? 'Failed to load invoices');
+      if (error) {
+        if (/relation.*does not exist|42P01/i.test(error.message ?? '')) return [];
+        throw new Error(error.message ?? 'Failed to load invoices');
+      }
       let list = (data ?? []) as InvoiceWithCustomer[];
       if (params?.search?.trim()) {
         const term = params.search.trim().toLowerCase();

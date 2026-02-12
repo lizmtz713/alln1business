@@ -50,11 +50,13 @@ export function useTransactions(filters?: TransactionFilters) {
       const { data, error } = await q;
 
       if (error) {
+        if (/relation.*does not exist|42P01/i.test(error.message ?? '')) return [];
         throw new Error(error.message ?? 'Failed to load transactions');
       }
       return (data ?? []) as Transaction[];
     },
     enabled: Boolean(userId),
+    retry: false,
   });
 }
 

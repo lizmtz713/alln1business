@@ -17,6 +17,27 @@ export default function MoreScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: '#0F172A' }} contentContainerStyle={{ padding: 24 }}>
       <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold' }}>More</Text>
 
+      {hasSupabaseEnv && user && (
+        <>
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
+            Account
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/change-password' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Change Password
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       {hasSupabaseEnv && (
         <>
           <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
@@ -193,6 +214,20 @@ export default function MoreScreen() {
           </TouchableOpacity>
         </>
       )}
+
+      <TouchableOpacity
+        onPress={() => router.push('/status' as never)}
+        style={{
+          backgroundColor: '#334155',
+          borderRadius: 12,
+          padding: 16,
+          marginTop: 24,
+        }}
+      >
+        <Text style={{ color: '#94A3B8', textAlign: 'center', fontWeight: '500' }}>
+          System Status
+        </Text>
+      </TouchableOpacity>
 
       {user && (
         <TouchableOpacity
