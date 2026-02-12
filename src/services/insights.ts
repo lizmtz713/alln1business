@@ -120,6 +120,45 @@ export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
   return insights.slice(0, 3);
 }
 
+// --- Quarterly estimate insight (Phase 4G) ---
+export async function generateQuarterlyEstimateInsight(userId: string): Promise<InsightDraft | null> {
+  if (!hasSupabaseConfig) return null;
+  try {
+    const today = getLocalDateString();
+    const now = new Date();
+    const year = now.getFullYear();
+    const { getQuarterRanges } = await import('./quarterlyEstimates');
+
+    const { data: payments } = await supabase
+      .from('estimated_tax_payments')
+      .select('quarter, due_date, total_estimated, paid')
+      .eq('user_id', userId)
+      .eq('tax_year', year);
+
+    const ranges = getQuarterRanges(year);
+    const todayTime = new Date(today).getTime();
+
+    for (const p of payments ?? []) {
+      const row = p as { quarter: number; due_date: string; total_estimated: number; paid: boolean };
+      if (row.paid) continue;
+      const dueTime = new Date(row.due_date).getTime();
+      const diffDays = (dueTime - todayTime) / (24 * 60 * 60 * 1000);
+      if (diffDays >= 0 && diffDays <= 14) {
+        return {
+          type: 'action',
+          title: 'Quarterly tax estimate due soon',
+          body: `Q${row.quarter} estimate is due ${row.due_date}. Estimated: $${Number(row.total_estimated).toFixed(2)} (based on your transactions).`,
+          cta_label: 'View Estimates',
+          cta_route: '/estimates',
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // --- AI insights (when OpenAI key exists) ---
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
 
@@ -208,6 +247,7 @@ export async function upsertInsightsForToday(userId: string): Promise<DashboardI
 
   const context = await buildBusinessContext(userId);
   const ruleInsights = generateRuleInsights(context);
+  const quarterlyInsight = await generateQuarterlyEstimateInsight(userId);
   let aiInsights: InsightDraft[] = [];
 
   if (hasOpenAIKey) {
@@ -216,6 +256,11 @@ export async function upsertInsightsForToday(userId: string): Promise<DashboardI
 
   const merged: Array<{ draft: InsightDraft; source: 'rule' | 'ai' }> = [];
   const seenTitles = new Set<string>();
+
+  if (quarterlyInsight && !seenTitles.has(quarterlyInsight.title)) {
+    seenTitles.add(quarterlyInsight.title);
+    merged.push({ draft: quarterlyInsight, source: 'rule' });
+  }
 
   for (const r of ruleInsights) {
     if (!seenTitles.has(r.title)) {

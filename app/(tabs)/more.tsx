@@ -114,6 +114,32 @@ export default function MoreScreen() {
               Year-End Package
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/estimates' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Quarterly Estimates
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/compliance' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Compliance Calendar
+            </Text>
+          </TouchableOpacity>
 
           <Text style={{ color: '#94A3B8', fontSize: 16, marginBottom: 12 }}>
             Documents

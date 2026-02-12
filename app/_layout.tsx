@@ -25,6 +25,8 @@ function RootNavigator() {
       <Stack.Screen name="rules" options={{ headerShown: false }} />
       <Stack.Screen name="taxes" options={{ headerShown: false }} />
       <Stack.Screen name="year-end" options={{ headerShown: false }} />
+      <Stack.Screen name="estimates" options={{ headerShown: false }} />
+      <Stack.Screen name="compliance" options={{ headerShown: false }} />
     </Stack>
   );
 }
