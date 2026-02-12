@@ -7,6 +7,10 @@ export type BusinessContext = {
   unpaidInvoices: { count: number; total: number; overdue: Array<{ invoice_number: string; total: number; due_date: string }> };
   upcomingBills: { count: number; total: number; next: Array<{ bill_name: string; amount: number; due_date: string }> };
   recentDocuments: Array<{ name: string; doc_type: string; created_at: string }>;
+  /** Last 7 days total expenses (for spend spike insight) */
+  last7DaysExpense: number;
+  /** Previous 7 days total expenses (for spend spike insight) */
+  prev7DaysExpense: number;
 };
 
 export async function buildBusinessContext(userId: string): Promise<BusinessContext> {
@@ -17,6 +21,8 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
     unpaidInvoices: { count: 0, total: 0, overdue: [] },
     upcomingBills: { count: 0, total: 0, next: [] },
     recentDocuments: [],
+    last7DaysExpense: 0,
+    prev7DaysExpense: 0,
   };
   if (!hasSupabaseConfig) return empty;
 
@@ -149,6 +155,47 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
     /* ignore */
   }
 
+  let last7DaysExpense = 0;
+  let prev7DaysExpense = 0;
+  try {
+    const today = now.toISOString().split('T')[0];
+    const last7Start = new Date(now);
+    last7Start.setDate(last7Start.getDate() - 6);
+    const prev7Start = new Date(now);
+    prev7Start.setDate(prev7Start.getDate() - 13);
+    const prev7End = new Date(now);
+    prev7End.setDate(prev7End.getDate() - 7);
+    const last7StartStr = last7Start.toISOString().split('T')[0];
+    const prev7StartStr = prev7Start.toISOString().split('T')[0];
+    const prev7EndStr = prev7End.toISOString().split('T')[0];
+
+    const { data: last7 } = await supabase
+      .from('transactions')
+      .select('amount, type')
+      .eq('user_id', userId)
+      .gte('date', last7StartStr)
+      .lte('date', today);
+    if (last7) {
+      last7DaysExpense = (last7 as Array<{ amount: number; type: string }>)
+        .filter((t) => t.type === 'expense')
+        .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    }
+
+    const { data: prev7 } = await supabase
+      .from('transactions')
+      .select('amount, type')
+      .eq('user_id', userId)
+      .gte('date', prev7StartStr)
+      .lte('date', prev7EndStr);
+    if (prev7) {
+      prev7DaysExpense = (prev7 as Array<{ amount: number; type: string }>)
+        .filter((t) => t.type === 'expense')
+        .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    }
+  } catch {
+    /* ignore */
+  }
+
   return {
     profile,
     monthlyStats,
@@ -156,6 +203,8 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
     unpaidInvoices,
     upcomingBills,
     recentDocuments,
+    last7DaysExpense,
+    prev7DaysExpense,
   };
 }
 
