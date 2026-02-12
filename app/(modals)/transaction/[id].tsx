@@ -7,7 +7,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
+  Linking,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   useTransaction,
@@ -16,6 +19,7 @@ import {
 } from '../../../src/hooks/useTransactions';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../../src/services/env';
+import { uploadReceipt } from '../../../src/services/storage';
 import {
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
@@ -38,6 +42,9 @@ export default function TransactionDetailScreen() {
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptPreviewUri, setReceiptPreviewUri] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   const categories =
     tx?.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -49,8 +56,36 @@ export default function TransactionDetailScreen() {
       setVendor(tx.vendor ?? '');
       setCategory(tx.category ?? 'other');
       setDescription(tx.description ?? '');
+      setReceiptUrl(tx.receipt_url ?? null);
+      setReceiptPreviewUri(tx.receipt_url ?? null);
     }
   }, [tx]);
+
+  const pickReceipt = async () => {
+    if (!user) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission', 'Camera roll access is needed to attach receipts.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    setReceiptPreviewUri(uri);
+    setUploadingReceipt(true);
+    try {
+      const url = await uploadReceipt(user.id, uri);
+      setReceiptUrl(url);
+    } catch {
+      setReceiptPreviewUri(receiptUrl);
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
 
   const canSave =
     hasSupabaseEnv &&
@@ -76,6 +111,7 @@ export default function TransactionDetailScreen() {
           vendor: vendor || null,
           category: category || null,
           description: description || null,
+          receipt_url: receiptUrl || null,
         },
       });
       router.back();
@@ -236,6 +272,50 @@ export default function TransactionDetailScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        )}
+
+        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Receipt</Text>
+        {(receiptPreviewUri || receiptUrl) ? (
+          <TouchableOpacity
+            onPress={() => {
+              const url = receiptUrl ?? receiptPreviewUri;
+              if (url) Linking.openURL(url);
+            }}
+            style={{
+              width: 80,
+              height: 80,
+              backgroundColor: '#1E293B',
+              borderRadius: 8,
+              marginBottom: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <Image
+              source={{ uri: receiptPreviewUri ?? receiptUrl ?? undefined }}
+              style={{ width: 80, height: 80 }}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={pickReceipt}
+            disabled={uploadingReceipt}
+            style={{
+              backgroundColor: '#1E293B',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: '#334155',
+              borderStyle: 'dashed',
+            }}
+          >
+            {uploadingReceipt ? (
+              <ActivityIndicator color="#3B82F6" />
+            ) : (
+              <Text style={{ color: '#3B82F6', textAlign: 'center' }}>Add Receipt</Text>
+            )}
+          </TouchableOpacity>
         )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Description</Text>

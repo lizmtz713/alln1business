@@ -44,6 +44,7 @@ export type TransactionInsert = {
   is_reconciled?: boolean;
   tax_deductible?: boolean;
   notes?: string | null;
+  receipt_url?: string | null;
 };
 
 export type TransactionUpdate = Partial<

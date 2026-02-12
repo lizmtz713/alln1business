@@ -7,11 +7,14 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCreateTransaction } from '../../src/hooks/useTransactions';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
+import { uploadReceipt } from '../../src/services/storage';
 import { INCOME_CATEGORIES, getCategoryName } from '../../src/lib/categories';
 import { format } from 'date-fns';
 
@@ -25,8 +28,36 @@ export default function AddIncomeScreen() {
   const [category, setCategory] = useState('services');
   const [description, setDescription] = useState('');
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   const canSave = hasSupabaseEnv && user && amount && parseFloat(amount) > 0;
+
+  const pickReceipt = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission', 'Camera roll access is needed to attach receipts.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    setReceiptUri(uri);
+    setUploadingReceipt(true);
+    try {
+      const url = await uploadReceipt(user!.id, uri);
+      setReceiptUrl(url);
+    } catch {
+      setReceiptUri(null);
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -41,6 +72,7 @@ export default function AddIncomeScreen() {
         vendor: vendor || null,
         category: category || null,
         description: description || null,
+        receipt_url: receiptUrl || null,
       });
       router.back();
     } catch (e) {
@@ -168,7 +200,7 @@ export default function AddIncomeScreen() {
             borderRadius: 12,
             padding: 12,
             color: '#F8FAFC',
-            marginBottom: 24,
+            marginBottom: 16,
             borderWidth: 1,
             borderColor: '#334155',
           }}
@@ -178,6 +210,46 @@ export default function AddIncomeScreen() {
           placeholderTextColor="#64748B"
           multiline
         />
+
+        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Receipt (optional)</Text>
+        {receiptUri ? (
+          <TouchableOpacity
+            style={{
+              width: 80,
+              height: 80,
+              backgroundColor: '#1E293B',
+              borderRadius: 8,
+              marginBottom: 24,
+              overflow: 'hidden',
+            }}
+          >
+            <Image
+              source={{ uri: receiptUri }}
+              style={{ width: 80, height: 80 }}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={pickReceipt}
+            disabled={uploadingReceipt}
+            style={{
+              backgroundColor: '#1E293B',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+              borderWidth: 1,
+              borderColor: '#334155',
+              borderStyle: 'dashed',
+            }}
+          >
+            {uploadingReceipt ? (
+              <ActivityIndicator color="#3B82F6" />
+            ) : (
+              <Text style={{ color: '#3B82F6', textAlign: 'center' }}>Add Receipt</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           onPress={handleSave}

@@ -363,9 +363,23 @@ export default function TransactionsScreen() {
                 backgroundColor: '#334155',
                 padding: 16,
                 borderRadius: 12,
+                marginBottom: 8,
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Add Income</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setFabOpen(false);
+                router.push('/(modals)/upload-statement' as never);
+              }}
+              style={{
+                backgroundColor: '#334155',
+                padding: 16,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Upload Statement</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
