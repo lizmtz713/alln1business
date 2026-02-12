@@ -146,13 +146,21 @@ export default function DashboardScreen() {
           </ScrollView>
         </View>
 
-        <View className="mt-8">
+          <View className="mt-8">
           <Text className="mb-3 text-lg font-semibold text-white">Quick Actions</Text>
           <View className="flex-row flex-wrap gap-3">
             {quickActions.map((a, i) => (
               <TouchableOpacity
                 key={i}
                 className="w-[31%] rounded-xl bg-slate-800 p-4"
+                onPress={() => {
+                  if (a.label === 'Scan Receipt') router.push('/(modals)/scan-receipt' as never);
+                  else if (a.label === 'Add Expense') router.push('/(modals)/add-expense' as never);
+                  else if (a.label === 'Add Income') router.push('/(modals)/add-income' as never);
+                  else if (a.label === 'Create Invoice') router.push('/(modals)/create-invoice' as never);
+                  else if (a.label === 'Upload Statement') router.push('/(modals)/upload-statement' as never);
+                  else if (a.label === 'Add Bill') router.push('/(modals)/add-bill' as never);
+                }}
               >
                 <Text className="text-2xl">{a.icon}</Text>
                 <Text className="mt-2 text-sm text-white">{a.label}</Text>

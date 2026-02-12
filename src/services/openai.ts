@@ -1,5 +1,10 @@
+import { z } from 'zod';
+
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
 export const hasOpenAIKey = Boolean(OPENAI_API_KEY);
+
+const RECEIPT_EXPENSE_CATS =
+  'supplies, travel, meals, utilities, software, contractors, marketing, insurance, rent, equipment, professional, taxes, payroll, shipping, vehicle, office, bank_fees, other';
 
 let chatCompletionInFlight = false;
 
@@ -308,5 +313,117 @@ export async function generateDocumentText(
         'An error occurred while generating. Please try again or use a template.' +
         DISCLAIMER,
     };
+  }
+}
+
+export type ReceiptProcessResult = {
+  vendor: string | null;
+  date: string | null;
+  amount: number | null;
+  category: string | null;
+  items: string[];
+  notes: string | null;
+  rawText?: string | null;
+};
+
+const receiptProcessSchema = z.object({
+  vendor: z.string().nullable(),
+  date: z.string().nullable(),
+  amount: z.number().positive().nullable(),
+  category: z.string().nullable(),
+  items: z.array(z.string()).max(10),
+  notes: z.string().nullable(),
+  rawText: z.string().nullable().optional(),
+});
+
+export async function processReceiptImage(params: {
+  imageBase64: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+}): Promise<ReceiptProcessResult> {
+  const fallback: ReceiptProcessResult = {
+    vendor: null,
+    date: null,
+    amount: null,
+    category: null,
+    items: [],
+    notes: null,
+    rawText: null,
+  };
+
+  if (!hasOpenAIKey || !OPENAI_API_KEY) {
+    return fallback;
+  }
+
+  const dataUrl = `data:${params.mimeType};base64,${params.imageBase64}`;
+
+  const prompt = `Extract receipt data from this image. Return ONLY valid JSON, no other text.
+
+Format:
+{"vendor":"Store Name","date":"YYYY-MM-DD","amount":12.99,"category":"meals","items":["Item 1","Item 2"],"notes":"subtotal/tax info if relevant","rawText":"optional OCR snippet"}
+
+Rules:
+- vendor: store/merchant name or null
+- date: YYYY-MM-DD or null
+- amount: total amount as positive number or null
+- category: MUST be one of: ${RECEIPT_EXPENSE_CATS} (use "other" if unsure)
+- items: max 10 line items as strings
+- notes: short summary (subtotal/tax/total) or null
+- rawText: optional raw OCR if useful`;
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: dataUrl },
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      }),
+    });
+
+    if (!res.ok) {
+      if (__DEV__) console.warn('[OpenAI] processReceiptImage API error:', res.status);
+      return fallback;
+    }
+
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const text = data.choices?.[0]?.message?.content?.trim() ?? '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return fallback;
+
+    const parsed = JSON.parse(jsonMatch[0]) as unknown;
+    const result = receiptProcessSchema.safeParse(parsed);
+    if (!result.success) return fallback;
+
+    const r = result.data;
+    const validCats = RECEIPT_EXPENSE_CATS.split(', ').map((c) => c.trim());
+    const category = r.category && validCats.includes(r.category) ? r.category : 'other';
+
+    return {
+      vendor: r.vendor || null,
+      date: r.date || null,
+      amount: r.amount ?? null,
+      category,
+      items: (r.items ?? []).slice(0, 10),
+      notes: r.notes || null,
+      rawText: r.rawText ?? null,
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[OpenAI] processReceiptImage error:', e);
+    return fallback;
   }
 }

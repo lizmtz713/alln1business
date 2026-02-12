@@ -371,6 +371,20 @@ export default function TransactionsScreen() {
             <TouchableOpacity
               onPress={() => {
                 setFabOpen(false);
+                router.push('/(modals)/scan-receipt' as never);
+              }}
+              style={{
+                backgroundColor: '#334155',
+                padding: 16,
+                borderRadius: 12,
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Scan Receipt</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setFabOpen(false);
                 router.push('/(modals)/upload-statement' as never);
               }}
               style={{

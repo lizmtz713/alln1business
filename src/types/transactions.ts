@@ -47,6 +47,8 @@ export type TransactionInsert = {
   notes?: string | null;
   receipt_url?: string | null;
   bank_statement_id?: string | null;
+  ai_categorized?: boolean;
+  ai_confidence?: number | null;
 };
 
 export type TransactionUpdate = Partial<

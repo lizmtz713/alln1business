@@ -19,6 +19,7 @@ export default function ModalsLayout() {
       <Stack.Screen name="edit-document/[id]" />
       <Stack.Screen name="use-template/[id]" />
       <Stack.Screen name="ai-draft" />
+      <Stack.Screen name="scan-receipt" />
       <Stack.Screen name="transaction/[id]" />
     </Stack>
   );
