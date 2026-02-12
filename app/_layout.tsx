@@ -2,16 +2,27 @@ import '../global.css';
 
 import { Stack } from 'expo-router';
 import 'react-native-reanimated';
+import { QueryProvider } from '../src/providers/QueryProvider';
+import { AuthProvider, useAuth } from '../src/providers/AuthProvider';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
 
-export default function RootLayout() {
+function RootNavigator() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </QueryProvider>
   );
 }
