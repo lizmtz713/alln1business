@@ -86,6 +86,23 @@ export default function MoreScreen() {
           </TouchableOpacity>
 
           <Text style={{ color: '#94A3B8', fontSize: 16, marginBottom: 12 }}>
+            Reports
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/taxes' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Tax Prep
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginBottom: 12 }}>
             Documents
           </Text>
           <TouchableOpacity

@@ -10,7 +10,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTransactions } from '../../src/hooks/useTransactions';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { getCategoryName } from '../../src/lib/categories';
@@ -104,8 +104,9 @@ function TransactionRow({
 
 export default function TransactionsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ category?: string; start?: string; end?: string }>();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<FilterType>('all');
+  const [typeFilter, setTypeFilter] = useState<FilterType>(params.category ? 'expense' : 'all');
   const [reconciledFilter, setReconciledFilter] = useState<ReconciledFilter>('all');
   const [fabOpen, setFabOpen] = useState(false);
 
@@ -116,8 +117,13 @@ export default function TransactionsScreen() {
         reconciledFilter === 'all'
           ? undefined
           : reconciledFilter === 'reconciled',
+      category: params.category || undefined,
+      dateRange:
+        params.start && params.end
+          ? { start: params.start, end: params.end }
+          : undefined,
     }),
-    [typeFilter, reconciledFilter]
+    [typeFilter, reconciledFilter, params.category, params.start, params.end]
   );
 
   const { data: transactions = [], isLoading, refetch, isRefetching } = useTransactions(filters);
