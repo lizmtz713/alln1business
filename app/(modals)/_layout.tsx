@@ -15,6 +15,8 @@ export default function ModalsLayout() {
       <Stack.Screen name="add-vendor" />
       <Stack.Screen name="edit-vendor/[id]" />
       <Stack.Screen name="upload-statement" />
+      <Stack.Screen name="upload-document" />
+      <Stack.Screen name="edit-document/[id]" />
       <Stack.Screen name="transaction/[id]" />
     </Stack>
   );

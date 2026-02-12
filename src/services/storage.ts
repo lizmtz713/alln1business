@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { hasSupabaseConfig } from './supabase';
 
 const BUCKET = 'receipts';
+const DOCUMENTS_BUCKET = 'documents';
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64);
@@ -80,6 +81,53 @@ export async function uploadDocument(
     return urlData.publicUrl;
   } catch (e) {
     if (__DEV__) console.warn('[Storage] uploadDocument error:', e);
+    return null;
+  }
+}
+
+/** Upload a file to the dedicated documents bucket. Path: documents/{userId}/{timestamp}-{filename} */
+export async function uploadToDocumentsBucket(params: {
+  userId: string;
+  uri: string;
+  filename: string;
+}): Promise<string | null> {
+  if (!hasSupabaseConfig) return null;
+
+  try {
+    const ext = params.filename.includes('.')
+      ? params.filename.slice(params.filename.lastIndexOf('.'))
+      : '.pdf';
+    const safeName = params.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const path = `${params.userId}/${Date.now()}-${safeName}`;
+
+    const base64 = await FileSystem.readAsStringAsync(params.uri, {
+      encoding: 'base64',
+    });
+    const arrayBuffer = base64ToArrayBuffer(base64);
+
+    let contentType = 'application/octet-stream';
+    if (ext === '.pdf') contentType = 'application/pdf';
+    else if (['.jpg', '.jpeg'].includes(ext.toLowerCase())) contentType = 'image/jpeg';
+    else if (['.png', '.webp'].includes(ext.toLowerCase())) contentType = `image/${ext.slice(1).toLowerCase()}`;
+
+    const { data, error } = await supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .upload(path, arrayBuffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) {
+      if (__DEV__) console.warn('[Storage] uploadToDocumentsBucket error:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(DOCUMENTS_BUCKET)
+      .getPublicUrl(data.path);
+    return urlData.publicUrl;
+  } catch (e) {
+    if (__DEV__) console.warn('[Storage] uploadToDocumentsBucket error:', e);
     return null;
   }
 }

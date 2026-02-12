@@ -19,6 +19,7 @@ function RootNavigator() {
       <Stack.Screen name="vendors" options={{ headerShown: false }} />
       <Stack.Screen name="invoice/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="bill/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="document/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -19,9 +19,11 @@ import {
   isOverdue,
   isDueSoon,
 } from '../../src/hooks/useBills';
+import { useDocuments } from '../../src/hooks/useDocuments';
 import { hasSupabaseEnv } from '../../src/services/env';
 import type { InvoiceWithCustomer } from '../../src/types/invoices';
 import type { BillWithVendor } from '../../src/types/bills';
+import type { DocumentWithRelations } from '../../src/types/documents';
 import { format, parseISO } from 'date-fns';
 
 type DocSegment = 'all' | 'invoices' | 'bills' | 'contracts' | 'forms';
@@ -117,6 +119,51 @@ function BillStatusBadge({ bill }: { bill: BillWithVendor }) {
   );
 }
 
+function DocumentCard({
+  doc,
+  onPress,
+}: {
+  doc: DocumentWithRelations;
+  onPress: () => void;
+}) {
+  const customer = doc.customers;
+  const vendor = doc.vendors;
+  const linked = customer?.company_name || customer?.contact_name || vendor?.company_name || vendor?.contact_name || null;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: '#1E293B',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#F8FAFC', fontWeight: '600', fontSize: 16 }} numberOfLines={1}>
+            {doc.name}
+          </Text>
+          {linked && (
+            <Text style={{ color: '#94A3B8', fontSize: 14, marginTop: 4 }} numberOfLines={1}>
+              {linked}
+            </Text>
+          )}
+        </View>
+        <View style={{ backgroundColor: '#334155', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+          <Text style={{ color: '#94A3B8', fontSize: 11, textTransform: 'capitalize' }}>
+            {doc.doc_type.replace('_', ' ')}
+          </Text>
+        </View>
+      </View>
+      <Text style={{ color: '#64748B', fontSize: 12, marginTop: 8 }}>
+        {format(parseISO(doc.created_at), 'MMM d, yyyy')}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function BillCard({
   bill,
   onPress,
@@ -183,6 +230,15 @@ export default function DocumentsScreen() {
     search: segment === 'bills' && search ? search : undefined,
   });
   const { data: billStats = { due_soon: 0, overdue: 0, paid: 0 } } = useBillStats();
+
+  const { data: contracts = [], isLoading: contractsLoading } = useDocuments({
+    segment: 'contracts',
+    search: segment === 'contracts' && search ? search : undefined,
+  });
+  const { data: forms = [], isLoading: formsLoading } = useDocuments({
+    segment: 'forms',
+    search: segment === 'forms' && search ? search : undefined,
+  });
 
   const filteredInvoices = useMemo(() => {
     if (segment !== 'invoices' && segment !== 'all') return [];
@@ -381,11 +437,37 @@ export default function DocumentsScreen() {
             <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
               Contracts
             </Text>
-            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+            {contracts.length === 0 ? (
+              <Text style={{ color: '#64748B', marginBottom: 16 }}>No contracts</Text>
+            ) : (
+              contracts.slice(0, 3).map((d) => (
+                <DocumentCard
+                  key={d.id}
+                  doc={d}
+                  onPress={() => router.push(`/document/${d.id}` as never)}
+                />
+              ))
+            )}
+            <TouchableOpacity
+              onPress={() => router.push('/(modals)/upload-document' as never)}
+              style={{ backgroundColor: '#334155', borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 8 }}
+            >
+              <Text style={{ color: '#3B82F6' }}>Upload Document</Text>
+            </TouchableOpacity>
             <Text style={{ color: '#F8FAFC', fontWeight: '600', marginTop: 24, marginBottom: 12 }}>
               Forms
             </Text>
-            <Text style={{ color: '#64748B' }}>Coming soon</Text>
+            {forms.length === 0 ? (
+              <Text style={{ color: '#64748B' }}>No forms</Text>
+            ) : (
+              forms.slice(0, 3).map((d) => (
+                <DocumentCard
+                  key={d.id}
+                  doc={d}
+                  onPress={() => router.push(`/document/${d.id}` as never)}
+                />
+              ))
+            )}
           </View>
         )}
 
@@ -477,12 +559,112 @@ export default function DocumentsScreen() {
           </>
         )}
 
-        {(segment === 'contracts' || segment === 'forms') && (
-          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-            <Text style={{ color: '#94A3B8' }}>Coming soon</Text>
-          </View>
+        {segment === 'contracts' && (
+          <>
+            <TextInput
+              style={{
+                backgroundColor: '#1E293B',
+                borderRadius: 12,
+                padding: 12,
+                color: '#F8FAFC',
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#334155',
+              }}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search documents..."
+              placeholderTextColor="#64748B"
+            />
+            {contractsLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
+            ) : contracts.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Text style={{ color: '#94A3B8', marginBottom: 16 }}>No contracts yet</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/upload-document' as never)}
+                  style={{ backgroundColor: '#3B82F6', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>Upload Document</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              contracts.map((d) => (
+                <DocumentCard
+                  key={d.id}
+                  doc={d}
+                  onPress={() => router.push(`/document/${d.id}` as never)}
+                />
+              ))
+            )}
+          </>
+        )}
+
+        {segment === 'forms' && (
+          <>
+            <TextInput
+              style={{
+                backgroundColor: '#1E293B',
+                borderRadius: 12,
+                padding: 12,
+                color: '#F8FAFC',
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: '#334155',
+              }}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search documents..."
+              placeholderTextColor="#64748B"
+            />
+            {formsLoading ? (
+              <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 24 }} />
+            ) : forms.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                <Text style={{ color: '#94A3B8', marginBottom: 16 }}>No forms yet</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(modals)/upload-document' as never)}
+                  style={{ backgroundColor: '#3B82F6', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>Upload Document</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              forms.map((d) => (
+                <DocumentCard
+                  key={d.id}
+                  doc={d}
+                  onPress={() => router.push(`/document/${d.id}` as never)}
+                />
+              ))
+            )}
+          </>
         )}
       </ScrollView>
+
+      {(segment === 'contracts' || segment === 'forms') && (
+        <TouchableOpacity
+          onPress={() => router.push('/(modals)/upload-document' as never)}
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            right: 24,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#3B82F6',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 28, fontWeight: '300' }}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
