@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase, hasSupabaseConfig } from '../services/supabase';
 
 export type Profile = {
   id: string;
@@ -64,6 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session?.user?.id]);
 
   useEffect(() => {
+    if (!hasSupabaseConfig) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       if (s?.user?.id) {
@@ -72,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
       }
       setLoading(false);
+    }).catch(() => {
+      setLoading(false);
     });
 
     const {
@@ -79,8 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (_event, s) => {
       setSession(s);
       if (s?.user?.id) {
-        const p = await fetchProfile(s.user.id);
-        setProfile(p);
+        fetchProfile(s.user.id).then(setProfile);
       } else {
         setProfile(null);
       }
@@ -90,18 +96,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    if (!hasSupabaseConfig) {
+      return { error: new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local') };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
+    if (!hasSupabaseConfig) {
+      return { error: new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local') };
+    }
     const { error } = await supabase.auth.signUp({ email, password });
     return { error };
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (hasSupabaseConfig) {
+      await supabase.auth.signOut();
+    }
     setProfile(null);
+    setSession(null);
   }, []);
 
   return (

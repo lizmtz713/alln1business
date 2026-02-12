@@ -5,8 +5,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-const hasConfig = Boolean(supabaseUrl && supabaseAnonKey);
-if (!hasConfig && __DEV__) {
+export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
+if (!hasSupabaseConfig && __DEV__) {
   console.warn(
     '[Supabase] Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. ' +
       'Add them to .env.local. Auth will not work until configured.'
@@ -20,7 +20,7 @@ const ExpoSecureStoreAdapter = {
 };
 
 function createSupabaseClient(): SupabaseClient {
-  if (!hasConfig) {
+  if (!hasSupabaseConfig) {
     return createClient(
       'https://placeholder.supabase.co',
       'placeholder-anon-key',
