@@ -20,6 +20,36 @@ export default function MoreScreen() {
       {hasSupabaseEnv && (
         <>
           <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
+            Contacts
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/customers' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Customers
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/vendors' as never)}
+            style={{
+              backgroundColor: '#334155',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{ color: '#F8FAFC', textAlign: 'center', fontWeight: '500' }}>
+              Vendors
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: '#94A3B8', fontSize: 16, marginBottom: 12 }}>
             Bank Accounts
           </Text>
           {bankAccounts.map((a) => (

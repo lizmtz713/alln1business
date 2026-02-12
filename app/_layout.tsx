@@ -15,6 +15,8 @@ function RootNavigator() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(modals)" options={{ headerShown: false }} />
       <Stack.Screen name="reconciliation" options={{ headerShown: false }} />
+      <Stack.Screen name="customers" options={{ headerShown: false }} />
+      <Stack.Screen name="vendors" options={{ headerShown: false }} />
     </Stack>
   );
 }

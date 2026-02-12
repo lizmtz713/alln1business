@@ -6,6 +6,10 @@ export default function ModalsLayout() {
       <Stack.Screen name="add-expense" />
       <Stack.Screen name="add-income" />
       <Stack.Screen name="add-bank-account" />
+      <Stack.Screen name="add-customer" />
+      <Stack.Screen name="edit-customer/[id]" />
+      <Stack.Screen name="add-vendor" />
+      <Stack.Screen name="edit-vendor/[id]" />
       <Stack.Screen name="upload-statement" />
       <Stack.Screen name="transaction/[id]" />
     </Stack>
