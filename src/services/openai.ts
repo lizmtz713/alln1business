@@ -380,6 +380,41 @@ export async function generateDocumentText(
   }
 }
 
+export async function getCpaNotes(params: {
+  totalIncome: number;
+  totalExpenses: number;
+  totalDeductible: number;
+  warnings?: Array<{ title: string; body: string }>;
+}): Promise<string | null> {
+  if (!hasOpenAIKey || !OPENAI_API_KEY) return null;
+  try {
+    const warnStr = params.warnings?.length
+      ? params.warnings.map((w) => `${w.title}: ${w.body}`).join('; ')
+      : 'None';
+    const prompt = `Based on these business numbers, write a short CPA-ready note (~80 words) summarizing key points for tax prep:
+Income: $${params.totalIncome.toFixed(2)}, Expenses: $${params.totalExpenses.toFixed(2)}, Deductible: $${params.totalDeductible.toFixed(2)}
+Warnings: ${warnStr}
+Be factual and concise. No legal advice.`;
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 150,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return data.choices?.[0]?.message?.content?.trim() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getTaxTips(params: {
   totalIncome: number;
   totalExpenses: number;
