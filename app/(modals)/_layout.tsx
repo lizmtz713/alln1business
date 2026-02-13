@@ -1,6 +1,18 @@
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { Stack, useRouter } from 'expo-router';
+import { useAuth } from '../../src/providers/AuthProvider';
 
 export default function ModalsLayout() {
+  const router = useRouter();
+  const { session, loading, hasSupabaseConfig } = useAuth();
+
+  useEffect(() => {
+    if (loading || !hasSupabaseConfig) return;
+    if (!session) {
+      router.replace('/');
+    }
+  }, [loading, session, hasSupabaseConfig, router]);
+
   return (
     <Stack
       screenOptions={{
@@ -12,22 +24,24 @@ export default function ModalsLayout() {
     >
       <Stack.Screen name="add-expense" />
       <Stack.Screen name="add-income" />
-      <Stack.Screen name="add-bank-account" />
-      <Stack.Screen name="add-customer" />
-      <Stack.Screen name="edit-customer/[id]" />
-      <Stack.Screen name="create-invoice" />
-      <Stack.Screen name="edit-invoice/[id]" />
       <Stack.Screen name="add-bill" />
       <Stack.Screen name="edit-bill/[id]" />
-      <Stack.Screen name="add-vendor" />
-      <Stack.Screen name="edit-vendor/[id]" />
-      <Stack.Screen name="upload-statement" />
       <Stack.Screen name="upload-document" />
       <Stack.Screen name="edit-document/[id]" />
-      <Stack.Screen name="use-template/[id]" />
-      <Stack.Screen name="ai-draft" />
       <Stack.Screen name="scan-receipt" />
       <Stack.Screen name="transaction/[id]" />
+      <Stack.Screen name="add-vehicle" />
+      <Stack.Screen name="edit-vehicle/[id]" />
+      <Stack.Screen name="add-pet" />
+      <Stack.Screen name="edit-pet/[id]" />
+      <Stack.Screen name="add-insurance" />
+      <Stack.Screen name="edit-insurance/[id]" />
+      <Stack.Screen name="add-medical" />
+      <Stack.Screen name="edit-medical/[id]" />
+      <Stack.Screen name="add-home-service" />
+      <Stack.Screen name="edit-home-service/[id]" />
+      <Stack.Screen name="add-appointment" />
+      <Stack.Screen name="edit-appointment/[id]" />
     </Stack>
   );
 }

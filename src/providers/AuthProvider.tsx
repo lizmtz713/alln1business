@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { supabase, hasSupabaseConfig } from '../services/supabase';
@@ -30,15 +31,27 @@ type AuthContextType = {
   loading: boolean;
   hasSupabaseConfig: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null; needsConfirmation?: boolean }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
+  updateProfile: (updates: { full_name?: string | null; business_name?: string | null }) => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/** User-friendly message when Supabase rate limits auth (e.g. too many attempts). */
+function normalizeAuthError(error: { message?: string; status?: number } | null): string {
+  if (!error?.message) return 'Something went wrong. Please try again.';
+  const msg = error.message;
+  const status = (error as { status?: number }).status;
+  if (status === 429 || /rate limit|too many requests|too many attempts/i.test(msg)) {
+    return 'Too many attempts. Please wait a few minutes and try again.';
+  }
+  return msg;
+}
 
 async function fetchProfile(userId: string): Promise<{ data: Profile; error: string | null }> {
   try {
@@ -64,12 +77,12 @@ async function fetchProfile(userId: string): Promise<{ data: Profile; error: str
 function extractParamsFromUrl(url: string): { access_token?: string; refresh_token?: string; type?: string } {
   try {
     const parsed = new URL(url);
-    const hash = parsed.hash?.substring(1) ?? '';
-    const params = new URLSearchParams(hash);
+    const fromHash = new URLSearchParams(parsed.hash?.substring(1) ?? '');
+    const fromQuery = new URLSearchParams(parsed.search?.substring(1) ?? '');
     return {
-      access_token: params.get('access_token') ?? undefined,
-      refresh_token: params.get('refresh_token') ?? undefined,
-      type: params.get('type') ?? undefined,
+      access_token: fromHash.get('access_token') ?? fromQuery.get('access_token') ?? undefined,
+      refresh_token: fromHash.get('refresh_token') ?? fromQuery.get('refresh_token') ?? undefined,
+      type: fromHash.get('type') ?? fromQuery.get('type') ?? undefined,
     };
   } catch {
     return {};
@@ -77,6 +90,7 @@ function extractParamsFromUrl(url: string): { access_token?: string; refresh_tok
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [session, setSession] = useState<AuthContextType['session']>(null);
   const [profile, setProfile] = useState<Profile>(null);
   const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
@@ -133,32 +147,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    console.log('[Auth] signIn() called', { email: email ? `${email.slice(0, 3)}***` : '' });
     if (!hasSupabaseConfig) {
       return { error: new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local') };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    if (error) {
+      return { error: new Error(normalizeAuthError({ message: error.message, status: (error as { status?: number }).status })) };
+    }
+    return { error: null };
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
+    console.log('[Auth] signUp() called', { email: email ? `${email.slice(0, 3)}***` : '' });
     if (!hasSupabaseConfig) {
+      console.log('[Auth] signUp: Supabase not configured');
       return { error: new Error('Supabase not configured.') };
     }
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      return { error: new Error(normalizeAuthError({ message: error.message, status: (error as { status?: number }).status })) };
+    }
+    if (data?.user && !data?.session) {
+      return { error: null, needsConfirmation: true };
+    }
+    return { error: null };
   }, []);
 
   const signOut = useCallback(async () => {
     if (hasSupabaseConfig) await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
-  }, []);
+    queryClient.clear();
+  }, [queryClient]);
 
   const signInWithGoogle = useCallback(async (): Promise<{ error: string | null }> => {
+    console.log('[Auth] signInWithGoogle() called');
     if (!hasSupabaseConfig) {
+      console.log('[Auth] signInWithGoogle: Supabase not configured');
       return { error: 'Supabase not configured.' };
     }
 
+    // Scheme: currently alln1business; rebrand to alln1home later (update app.json scheme too).
     const redirectTo = AuthSession.makeRedirectUri({
       path: 'google-auth',
       scheme: 'alln1business',
@@ -197,13 +227,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(async (email: string): Promise<{ error: string | null }> => {
     if (!hasSupabaseConfig) return { error: 'Supabase not configured.' };
 
+    // Scheme: currently alln1business; rebrand to alln1home later.
     const redirectTo = AuthSession.makeRedirectUri({
       path: 'reset-password',
       scheme: 'alln1business',
     });
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
-    if (error) return { error: error.message };
+    if (error) return { error: normalizeAuthError({ message: error.message, status: (error as { status?: number }).status }) };
     return { error: null };
   }, []);
 
@@ -214,6 +245,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return { error: error.message };
     return { error: null };
   }, []);
+
+  const updateProfile = useCallback(
+    async (updates: { full_name?: string | null; business_name?: string | null }): Promise<{ error: string | null }> => {
+      if (!hasSupabaseConfig || !session?.user?.id) return { error: 'Not signed in.' };
+      const { error } = await supabase.from('profiles').update(updates).eq('id', session.user.id).select().single();
+      if (error) return { error: error.message };
+      await refreshProfile();
+      return { error: null };
+    },
+    [hasSupabaseConfig, session?.user?.id, refreshProfile]
+  );
 
   return (
     <AuthContext.Provider
@@ -231,6 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetPassword,
         updatePassword,
         refreshProfile,
+        updateProfile,
       }}
     >
       {children}

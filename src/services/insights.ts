@@ -45,20 +45,7 @@ export type DashboardInsight = {
 export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
   const insights: InsightDraft[] = [];
 
-  // 1) Overdue invoices
-  if (context.unpaidInvoices.overdue.length > 0) {
-    const count = context.unpaidInvoices.overdue.length;
-    const total = context.unpaidInvoices.overdue.reduce((s, i) => s + Number(i.total), 0);
-    insights.push({
-      type: 'warning',
-      title: 'Overdue invoices',
-      body: `You have ${count} overdue invoice${count === 1 ? '' : 's'} totaling $${total.toFixed(2)}.`,
-      cta_label: 'View Invoices',
-      cta_route: '/(tabs)/documents',
-    });
-  }
-
-  // 2) Bills due this week
+  // 1) Bills due this week
   const today = new Date().toISOString().split('T')[0];
   const weekFromNow = new Date();
   weekFromNow.setDate(weekFromNow.getDate() + 7);
@@ -76,7 +63,7 @@ export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
     });
   }
 
-  // 3) Spend spike
+  // 2) Spend spike
   if (
     context.prev7DaysExpense > 0 &&
     context.last7DaysExpense > context.prev7DaysExpense * 1.25
@@ -91,7 +78,7 @@ export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
     });
   }
 
-  // 4) Win - profitable this month
+  // 3) Win - profitable this month
   if (
     context.monthlyStats.hasData &&
     context.monthlyStats.profit > 0 &&
@@ -106,7 +93,7 @@ export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
     });
   }
 
-  // 5) No data tip
+  // 4) No data tip
   if (!context.monthlyStats.hasData && context.lastTransactions.length === 0 && insights.length === 0) {
     insights.push({
       type: 'tip',
@@ -120,45 +107,6 @@ export function generateRuleInsights(context: BusinessContext): InsightDraft[] {
   return insights.slice(0, 3);
 }
 
-// --- Quarterly estimate insight (Phase 4G) ---
-export async function generateQuarterlyEstimateInsight(userId: string): Promise<InsightDraft | null> {
-  if (!hasSupabaseConfig) return null;
-  try {
-    const today = getLocalDateString();
-    const now = new Date();
-    const year = now.getFullYear();
-    const { getQuarterRanges } = await import('./quarterlyEstimates');
-
-    const { data: payments } = await supabase
-      .from('estimated_tax_payments')
-      .select('quarter, due_date, total_estimated, paid')
-      .eq('user_id', userId)
-      .eq('tax_year', year);
-
-    const ranges = getQuarterRanges(year);
-    const todayTime = new Date(today).getTime();
-
-    for (const p of payments ?? []) {
-      const row = p as { quarter: number; due_date: string; total_estimated: number; paid: boolean };
-      if (row.paid) continue;
-      const dueTime = new Date(row.due_date).getTime();
-      const diffDays = (dueTime - todayTime) / (24 * 60 * 60 * 1000);
-      if (diffDays >= 0 && diffDays <= 14) {
-        return {
-          type: 'action',
-          title: 'Quarterly tax estimate due soon',
-          body: `Q${row.quarter} estimate is due ${row.due_date}. Estimated: $${Number(row.total_estimated).toFixed(2)} (based on your transactions).`,
-          cta_label: 'View Estimates',
-          cta_route: '/estimates',
-        };
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 // --- AI insights (when OpenAI key exists) ---
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
 
@@ -166,16 +114,15 @@ export async function generateAIInsights(context: BusinessContext): Promise<Insi
   if (!hasOpenAIKey || !OPENAI_API_KEY) return [];
 
   const ctxText = [
-    `Business: ${context.profile.business_name || context.profile.business_type || 'Not set'}`,
+    `Household: ${context.profile.business_name || context.profile.business_type || 'Not set'}`,
     context.monthlyStats.hasData
-      ? `This month: Income $${context.monthlyStats.income.toFixed(2)}, Expenses $${context.monthlyStats.expenses.toFixed(2)}, Profit $${context.monthlyStats.profit.toFixed(2)}`
+      ? `This month: Income $${context.monthlyStats.income.toFixed(2)}, Expenses $${context.monthlyStats.expenses.toFixed(2)}, Net $${context.monthlyStats.profit.toFixed(2)}`
       : 'This month: No transaction data',
-    `Unpaid invoices: ${context.unpaidInvoices.count} totaling $${context.unpaidInvoices.total.toFixed(2)}`,
     `Upcoming bills: ${context.upcomingBills.count} totaling $${context.upcomingBills.total.toFixed(2)}`,
     `Recent transactions: ${context.lastTransactions.length}`,
   ].join('\n');
 
-  const prompt = `You are a helpful business insights assistant. Based on this data, suggest up to 2 short, actionable insights for a small business owner. Return ONLY a valid JSON array, no other text.
+  const prompt = `You are a helpful household insights assistant. Based on this data, suggest up to 2 short, actionable insights for a household. Return ONLY a valid JSON array, no other text.
 
 Data:
 ${ctxText}
@@ -247,7 +194,6 @@ export async function upsertInsightsForToday(userId: string): Promise<DashboardI
 
   const context = await buildBusinessContext(userId);
   const ruleInsights = generateRuleInsights(context);
-  const quarterlyInsight = await generateQuarterlyEstimateInsight(userId);
   let aiInsights: InsightDraft[] = [];
 
   if (hasOpenAIKey) {
@@ -256,11 +202,6 @@ export async function upsertInsightsForToday(userId: string): Promise<DashboardI
 
   const merged: Array<{ draft: InsightDraft; source: 'rule' | 'ai' }> = [];
   const seenTitles = new Set<string>();
-
-  if (quarterlyInsight && !seenTitles.has(quarterlyInsight.title)) {
-    seenTitles.add(quarterlyInsight.title);
-    merged.push({ draft: quarterlyInsight, source: 'rule' });
-  }
 
   for (const r of ruleInsights) {
     if (!seenTitles.has(r.title)) {

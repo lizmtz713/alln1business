@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useToast } from '../../src/components/ui';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDocument, useDeleteDocument, useUpdateDocument } from '../../src/hooks/useDocuments';
@@ -159,8 +159,14 @@ export default function DocumentDetailScreen() {
 
   if (isLoading || !doc) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={{ flex: 1, backgroundColor: '#0F172A', padding: 24 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
+          <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          {!isLoading && !doc && <Text style={{ color: '#94A3B8', marginTop: 12 }}>Document not found</Text>}
+        </View>
       </View>
     );
   }

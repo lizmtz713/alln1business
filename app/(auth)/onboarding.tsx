@@ -13,26 +13,27 @@ import { router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { supabase } from '../../src/services/supabase';
 
-const BUSINESS_TYPES = [
-  { id: 'freelance', label: 'Freelance / Consulting', icon: '💼' },
-  { id: 'service', label: 'Service Business', icon: '🛠' },
-  { id: 'retail', label: 'Retail / E-commerce', icon: '🛒' },
+const HOUSEHOLD_TYPES = [
+  { id: 'family', label: 'Family with kids', icon: '👨‍👩‍👧‍👦' },
+  { id: 'couple', label: 'Me and my partner', icon: '👫' },
+  { id: 'solo', label: 'Just me', icon: '🏠' },
+  { id: 'roommates', label: 'Roommates', icon: '🔑' },
   { id: 'other', label: 'Other', icon: '📦' },
 ];
 
 const ENTITY_TYPES = [
-  'Sole Proprietorship',
-  'LLC',
-  'Corporation',
-  'Partnership',
+  'Just me',
+  'Me and my partner',
+  'Family with kids',
+  'Roommates',
   'Not sure yet',
 ];
 
 const CHALLENGES = [
   { id: 'expenses', label: 'Tracking expenses', icon: '🧾' },
-  { id: 'taxes', label: 'Managing taxes', icon: '💰' },
-  { id: 'invoicing', label: 'Invoicing clients', icon: '📄' },
+  { id: 'bills', label: 'Managing bills', icon: '📄' },
   { id: 'organized', label: 'Staying organized', icon: '📋' },
+  { id: 'documents', label: 'Documents & records', icon: '📁' },
   { id: 'all', label: 'All of it!', icon: '🤯' },
 ];
 
@@ -45,8 +46,8 @@ export default function OnboardingScreen() {
     }
   }, [user?.id]);
   const [step, setStep] = useState(0);
-  const [businessName, setBusinessName] = useState('');
-  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [householdName, setHouseholdName] = useState('');
+  const [householdType, setHouseholdType] = useState<string | null>(null);
   const [entityType, setEntityType] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -62,8 +63,8 @@ export default function OnboardingScreen() {
       const basePayload = {
         id: user.id,
         email: (user as { email?: string }).email ?? '',
-        business_name: businessName || null,
-        business_type: businessType,
+        business_name: householdName || null,
+        business_type: householdType,
         entity_type: entityType,
         onboarding_completed: true,
         updated_at: new Date().toISOString(),
@@ -154,14 +155,14 @@ export default function OnboardingScreen() {
         {step === 0 && (
           <>
             <Text className="mb-2 text-2xl font-bold text-white">
-              What&apos;s your business name?
+              What should we call your household?
             </Text>
             <TextInput
               className="mb-6 rounded-xl border border-slate-600 bg-slate-800 px-4 py-3 text-white"
-              placeholder="Enter business name"
+              placeholder="Household or your name"
               placeholderTextColor="#94A3B8"
-              value={businessName}
-              onChangeText={setBusinessName}
+              value={householdName}
+              onChangeText={setHouseholdName}
               autoFocus
             />
             <TouchableOpacity
@@ -179,14 +180,14 @@ export default function OnboardingScreen() {
         {step === 1 && (
           <>
             <Text className="mb-6 text-2xl font-bold text-white">
-              What type of business?
+              What best describes your household?
             </Text>
-            {BUSINESS_TYPES.map((t) => (
+            {HOUSEHOLD_TYPES.map((t) => (
               <TouchableOpacity
                 key={t.id}
                 className="mb-3 flex-row items-center rounded-xl border border-slate-600 bg-slate-800 p-4"
                 onPress={() => {
-                  setBusinessType(t.id);
+                  setHouseholdType(t.id);
                   setStep(2);
                 }}
               >
@@ -200,7 +201,7 @@ export default function OnboardingScreen() {
         {step === 2 && (
           <>
             <Text className="mb-6 text-2xl font-bold text-white">
-              How is your business structured?
+              Who uses this app?
             </Text>
             {ENTITY_TYPES.map((e) => (
               <TouchableOpacity
@@ -217,13 +218,10 @@ export default function OnboardingScreen() {
           </>
         )}
 
-        {/* Step 3: Challenge selection — ROOT CAUSE: TouchableOpacity worked but had no selected-state
-            UI; user couldn't tell what was selected. Also ensure touches aren't blocked by
-            overlapping views. Fix: show selected styling (border + bg), use activeOpacity for feedback. */}
         {step === 3 && (
           <>
             <Text className="mb-6 text-2xl font-bold text-white">
-              What&apos;s your biggest challenge?
+              What do you want help with most?
             </Text>
             {CHALLENGES.map((c) => {
               const isSelected = challenge === c.id;

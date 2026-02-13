@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,6 +12,7 @@ import {
 import { Link, router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { useToast } from '../../src/components/ui';
+import { sanitizeEmail, isValidEmailFormat } from '../../src/lib/sanitize';
 
 export default function ForgotPasswordScreen() {
   const { resetPassword, hasSupabaseConfig } = useAuth();
@@ -20,13 +22,18 @@ export default function ForgotPasswordScreen() {
   const [sent, setSent] = useState(false);
 
   const handleSubmit = async () => {
-    if (!email.trim()) {
+    const safeEmail = sanitizeEmail(email);
+    if (!safeEmail) {
       toast.show('Enter your email address.', 'error');
+      return;
+    }
+    if (!isValidEmailFormat(safeEmail)) {
+      toast.show('Please enter a valid email address.', 'error');
       return;
     }
     setLoading(true);
     setSent(false);
-    const { error } = await resetPassword(email.trim());
+    const { error } = await resetPassword(safeEmail);
     setLoading(false);
     if (error) {
       toast.show(error, 'error');
@@ -92,9 +99,11 @@ export default function ForgotPasswordScreen() {
               onPress={handleSubmit}
               disabled={loading}
             >
-              <Text className="text-center font-semibold text-white">
-                {loading ? 'Sending...' : 'Send Reset Link'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-center font-semibold text-white">Send Reset Link</Text>
+              )}
             </TouchableOpacity>
           </>
         )}

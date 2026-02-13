@@ -7,16 +7,22 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCreateBill } from '../../src/hooks/useBills';
-import { useVendors } from '../../src/hooks/useVendors';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
+import { sanitizeText, MAX_LENGTHS } from '../../src/lib/sanitize';
 import { uploadDocument } from '../../src/services/storage';
 import { EXPENSE_CATEGORIES } from '../../src/lib/categories';
 import { format, addDays } from 'date-fns';
+import { SmartPhotoCapture, type SmartPhotoCaptureResult } from '../../src/components/SmartPhotoCapture';
+import { hasScanApi } from '../../src/services/scanDocument';
+import { hapticLight } from '../../src/lib/haptics';
 
 const RECURRENCE_OPTIONS = [
   { id: 'monthly', label: 'Monthly' },
@@ -37,11 +43,9 @@ const inputStyle = {
 export default function AddBillScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: vendors = [] } = useVendors();
   const createBill = useCreateBill();
 
   const [billName, setBillName] = useState('');
-  const [vendorId, setVendorId] = useState<string | null>(null);
   const [providerName, setProviderName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [providerPhone, setProviderPhone] = useState('');
@@ -58,8 +62,23 @@ export default function AddBillScreen() {
   const [notes, setNotes] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [scanVisible, setScanVisible] = useState(false);
 
   const canSave = hasSupabaseEnv && user && billName.trim() && amount && parseFloat(amount) > 0 && dueDate;
+
+  const applyScanResult = (result: SmartPhotoCaptureResult) => {
+    if (result.documentType !== 'bill' && result.documentType !== 'receipt') return;
+    const f = result.fields;
+    if (f.provider_name != null) setProviderName(String(f.provider_name));
+    if (f.bill_name != null) setBillName(String(f.bill_name));
+    if (f.amount != null) setAmount(String(f.amount));
+    if (f.due_date != null) setDueDate(String(f.due_date).slice(0, 10));
+    if (f.account_number != null) setAccountNumber(String(f.account_number));
+    if (f.payment_url != null) setPaymentUrl(String(f.payment_url));
+    if (f.notes != null) setNotes(String(f.notes));
+    if (result.storageUrl) setAttachmentUrl(result.storageUrl);
+    setScanVisible(false);
+  };
 
   const pickAttachment = async () => {
     try {
@@ -85,8 +104,8 @@ export default function AddBillScreen() {
 
     try {
       await createBill.mutateAsync({
-        bill_name: billName.trim(),
-        vendor_id: vendorId,
+        bill_name: sanitizeText(billName, MAX_LENGTHS.shortText),
+        vendor_id: null,
         provider_name: providerName.trim() || null,
         account_number: accountNumber.trim() || null,
         provider_phone: providerPhone.trim() || null,
@@ -121,8 +140,8 @@ export default function AddBillScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#0F172A' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <ScrollView contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -131,29 +150,20 @@ export default function AddBillScreen() {
           Add Bill
         </Text>
 
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Bill Name *</Text>
-        <TextInput style={inputStyle} value={billName} onChangeText={setBillName} placeholder="e.g. Electric Bill" placeholderTextColor="#64748B" />
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Vendor (optional)</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+        {hasScanApi && (
           <TouchableOpacity
-            onPress={() => setVendorId(null)}
-            style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: !vendorId ? '#3B82F6' : '#1E293B', marginRight: 8 }}
+            onPress={() => { hapticLight(); setScanVisible(true); }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#334155', borderRadius: 12, padding: 14, marginBottom: 24 }}
           >
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
+            <Ionicons name="scan" size={22} color="#3B82F6" />
+            <Text style={{ color: '#3B82F6', fontWeight: '600', fontSize: 16 }}>Scan bill or receipt</Text>
           </TouchableOpacity>
-          {vendors.map((v) => (
-            <TouchableOpacity
-              key={v.id}
-              onPress={() => setVendorId(v.id)}
-              style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: vendorId === v.id ? '#3B82F6' : '#1E293B', marginRight: 8 }}
-            >
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>{v.company_name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        )}
 
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Provider Name</Text>
+        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Bill Name *</Text>
+        <TextInput style={inputStyle} value={billName} onChangeText={setBillName} placeholder="e.g. Electric Bill" placeholderTextColor="#64748B" maxLength={MAX_LENGTHS.shortText} />
+
+        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Provider / Payee Name</Text>
         <TextInput style={inputStyle} value={providerName} onChangeText={setProviderName} placeholder="Optional" placeholderTextColor="#64748B" />
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Account Number</Text>
@@ -231,7 +241,14 @@ export default function AddBillScreen() {
         >
           {createBill.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Save</Text>}
         </TouchableOpacity>
+
+        <SmartPhotoCapture
+          visible={scanVisible}
+          onClose={() => setScanVisible(false)}
+          onExtracted={applyScanResult}
+          expectedType="bill"
+        />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

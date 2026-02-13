@@ -4,7 +4,6 @@ export type BusinessContext = {
   profile: { business_name: string | null; business_type: string | null; entity_type: string | null };
   monthlyStats: { income: number; expenses: number; profit: number; hasData: boolean };
   lastTransactions: Array<{ date: string; vendor: string; amount: number; category: string }>;
-  unpaidInvoices: { count: number; total: number; overdue: Array<{ invoice_number: string; total: number; due_date: string }> };
   upcomingBills: { count: number; total: number; next: Array<{ bill_name: string; amount: number; due_date: string }> };
   recentDocuments: Array<{ name: string; doc_type: string; created_at: string }>;
   /** Last 7 days total expenses (for spend spike insight) */
@@ -18,7 +17,6 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
     profile: { business_name: null, business_type: null, entity_type: null },
     monthlyStats: { income: 0, expenses: 0, profit: 0, hasData: false },
     lastTransactions: [],
-    unpaidInvoices: { count: 0, total: 0, overdue: [] },
     upcomingBills: { count: 0, total: 0, next: [] },
     recentDocuments: [],
     last7DaysExpense: 0,
@@ -33,7 +31,6 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
   const profile = { business_name: null as string | null, business_type: null as string | null, entity_type: null as string | null };
   let monthlyStats = { income: 0, expenses: 0, profit: 0, hasData: false };
   let lastTransactions: BusinessContext['lastTransactions'] = [];
-  let unpaidInvoices = { count: 0, total: 0, overdue: [] as BusinessContext['unpaidInvoices']['overdue'] };
   let upcomingBills = { count: 0, total: 0, next: [] as BusinessContext['upcomingBills']['next'] };
   let recentDocuments: BusinessContext['recentDocuments'] = [];
 
@@ -88,28 +85,6 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
         amount: t.type === 'income' ? Number(t.amount) : -Math.abs(Number(t.amount)),
         category: t.category ?? 'other',
       }));
-    }
-  } catch {
-    /* ignore */
-  }
-
-  try {
-    const today = now.toISOString().split('T')[0];
-    const { data: invs } = await supabase
-      .from('invoices')
-      .select('invoice_number, total, due_date')
-      .eq('user_id', userId)
-      .in('status', ['sent', 'viewed', 'overdue'])
-      .order('due_date', { ascending: true });
-    if (invs) {
-      const unpaid = (invs as Array<{ invoice_number: string; total: number; due_date: string }>).filter(
-        (i) => i.due_date
-      );
-      unpaidInvoices = {
-        count: unpaid.length,
-        total: unpaid.reduce((s, i) => s + Number(i.total), 0),
-        overdue: unpaid.filter((i) => i.due_date < today).slice(0, 5),
-      };
     }
   } catch {
     /* ignore */
@@ -200,7 +175,6 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
     profile,
     monthlyStats,
     lastTransactions,
-    unpaidInvoices,
     upcomingBills,
     recentDocuments,
     last7DaysExpense,
@@ -210,18 +184,18 @@ export async function buildBusinessContext(userId: string): Promise<BusinessCont
 
 export function makeSystemPrompt(context: BusinessContext): string {
   const lines: string[] = [
-    'You are a helpful, supportive business assistant for Alln1 Business. Use plain English. Be concise—keep responses under ~200 words unless the user asks for more. Never give legal or tax advice; only general guidance. If data is missing or sparse, say so honestly and suggest next steps like adding transactions, creating an invoice, or connecting a bank account.',
+    'You are a helpful, supportive household assistant for Alln1Home. Use plain English. Be concise—keep responses under ~200 words unless the user asks for more. Never give legal or tax advice; only general guidance. If data is missing or sparse, say so honestly and suggest next steps like adding transactions or bills.',
     '',
-    'Current business context (user data):',
+    'Current household context (user data):',
   ];
 
   const name = context.profile.business_name || context.profile.business_type || 'Not set';
-  lines.push(`- Business: ${name}`);
-  if (context.profile.entity_type) lines.push(`- Entity type: ${context.profile.entity_type}`);
+  lines.push(`- Household: ${name}`);
+  if (context.profile.entity_type) lines.push(`- Who uses the app: ${context.profile.entity_type}`);
 
   if (context.monthlyStats.hasData) {
     lines.push(
-      `- This month: Income $${context.monthlyStats.income.toFixed(2)}, Expenses $${context.monthlyStats.expenses.toFixed(2)}, Profit $${context.monthlyStats.profit.toFixed(2)}`
+      `- This month: Income $${context.monthlyStats.income.toFixed(2)}, Expenses $${context.monthlyStats.expenses.toFixed(2)}, Net $${context.monthlyStats.profit.toFixed(2)}`
     );
   } else {
     lines.push('- This month: No transaction data yet');
@@ -232,17 +206,6 @@ export function makeSystemPrompt(context: BusinessContext): string {
     for (const t of context.lastTransactions.slice(0, 5)) {
       lines.push(`  - ${t.date}: ${t.vendor} $${t.amount.toFixed(2)} (${t.category})`);
     }
-  }
-
-  if (context.unpaidInvoices.count > 0) {
-    lines.push(
-      `- Unpaid invoices: ${context.unpaidInvoices.count} totaling $${context.unpaidInvoices.total.toFixed(2)}`
-    );
-    if (context.unpaidInvoices.overdue.length > 0) {
-      lines.push('  Overdue: ' + context.unpaidInvoices.overdue.map((i) => `${i.invoice_number} $${Number(i.total).toFixed(2)}`).join(', '));
-    }
-  } else {
-    lines.push('- Unpaid invoices: None');
   }
 
   if (context.upcomingBills.count > 0) {
@@ -261,6 +224,6 @@ export function makeSystemPrompt(context: BusinessContext): string {
   }
 
   lines.push('');
-  lines.push('Answer the user based on this context. For document drafting (NDA, agreements), point them to the Templates section.');
+  lines.push('Answer the user based on this context.');
   return lines.join('\n');
 }

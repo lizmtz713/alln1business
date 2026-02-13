@@ -114,12 +114,57 @@ export function useCreateTransaction() {
       }
       return data as Transaction;
     },
-    onSuccess: () => {
+    onMutate: async (input) => {
+      if (!user?.id) return undefined;
+      await queryClient.cancelQueries({ queryKey: [QUERY_KEY] });
+      const tempId = `opt-${Date.now()}`;
+      const optimistic: Transaction = {
+        id: tempId,
+        user_id: user.id,
+        date: formatDate(input.date),
+        vendor: input.vendor ?? null,
+        description: input.description ?? null,
+        amount: input.amount,
+        type: input.type,
+        category: input.category ?? null,
+        subcategory: input.subcategory ?? null,
+        payment_method: input.payment_method ?? null,
+        reference_number: input.reference_number ?? null,
+        is_reconciled: false,
+        reconciled_date: null,
+        receipt_url: input.receipt_url ?? null,
+        bank_statement_id: input.bank_statement_id ?? null,
+        invoice_id: null,
+        bill_id: null,
+        ai_categorized: false,
+        ai_confidence: null,
+        tax_deductible: input.tax_deductible ?? false,
+        notes: input.notes ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      queryClient.setQueriesData<Transaction[]>(
+        { queryKey: [QUERY_KEY] },
+        (old) => (Array.isArray(old) ? [optimistic, ...old] : old)
+      );
+      return { tempId };
+    },
+    onSuccess: (data, _variables, context) => {
+      if (context?.tempId) {
+        queryClient.setQueriesData<Transaction[]>(
+          { queryKey: [QUERY_KEY] },
+          (old) =>
+            Array.isArray(old)
+              ? old.map((t) => (t.id === context.tempId ? data : t))
+              : old
+        );
+      }
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       toast.show('Saved', 'success');
       hapticSuccess();
     },
     onError: (e) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       toast.show(normalizeError(e), 'error');
     },
   });
@@ -160,6 +205,36 @@ export function useUpdateTransaction() {
       }
       return data as Transaction;
     },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: [QUERY_KEY] });
+      const previous = queryClient.getQueriesData<Transaction[]>({ queryKey: [QUERY_KEY] });
+      queryClient.setQueriesData<Transaction[]>(
+        { queryKey: [QUERY_KEY] },
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          const updatedAt = new Date().toISOString();
+          return old.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  ...updates,
+                  ...(updates.date && { date: formatDate(updates.date) }),
+                  updated_at: updatedAt,
+                }
+              : t
+          );
+        }
+      );
+      return { previous };
+    },
+    onError: (_e, _variables, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.show(normalizeError(_e), 'error');
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       queryClient.invalidateQueries({
@@ -167,9 +242,6 @@ export function useUpdateTransaction() {
       });
       toast.show('Saved', 'success');
       hapticSuccess();
-    },
-    onError: (e) => {
-      toast.show(normalizeError(e), 'error');
     },
   });
 }
@@ -195,13 +267,27 @@ export function useDeleteTransaction() {
         throw new Error(error.message ?? 'Failed to delete transaction');
       }
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: [QUERY_KEY] });
+      const previous = queryClient.getQueriesData<Transaction[]>({ queryKey: [QUERY_KEY] });
+      queryClient.setQueriesData<Transaction[]>(
+        { queryKey: [QUERY_KEY] },
+        (old) => (Array.isArray(old) ? old.filter((t) => t.id !== id) : old)
+      );
+      return { previous };
+    },
+    onError: (e, _id, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      toast.show(normalizeError(e), 'error');
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
       toast.show('Deleted', 'success');
       hapticSuccess();
-    },
-    onError: (e) => {
-      toast.show(normalizeError(e), 'error');
     },
   });
 }

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCreateTransaction } from '../../src/hooks/useTransactions';
 import { useAuth } from '../../src/providers/AuthProvider';
@@ -26,6 +27,9 @@ import { buildSuggestedRuleFromEdit } from '../../src/services/rules';
 import { useActiveCategoryRules, useCreateCategoryRule } from '../../src/hooks/useCategoryRules';
 import { LearnCategoryPrompt } from '../../src/components/LearnCategoryPrompt';
 import { format } from 'date-fns';
+import { SmartPhotoCapture, type SmartPhotoCaptureResult } from '../../src/components/SmartPhotoCapture';
+import { hasScanApi } from '../../src/services/scanDocument';
+import { hapticLight } from '../../src/lib/haptics';
 
 export default function AddExpenseScreen() {
   const router = useRouter();
@@ -43,9 +47,26 @@ export default function AddExpenseScreen() {
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [showLearnPrompt, setShowLearnPrompt] = useState(false);
   const [categoryFromRule, setCategoryFromRule] = useState(false);
+  const [scanVisible, setScanVisible] = useState(false);
 
   const { data: rules = [] } = useActiveCategoryRules();
   const createRule = useCreateCategoryRule();
+
+  const applyScanResult = (result: SmartPhotoCaptureResult) => {
+    if (result.documentType !== 'receipt' && result.documentType !== 'bill') return;
+    const f = result.fields;
+    if (f.store_name != null) setVendor(String(f.store_name));
+    else if (f.provider_name != null) setVendor(String(f.provider_name));
+    if (f.total_amount != null) setAmount(String(f.total_amount));
+    else if (f.amount != null) setAmount(String(f.amount));
+    if (f.date != null) setDate(String(f.date).slice(0, 10));
+    if (f.items != null) setDescription(Array.isArray(f.items) ? f.items.join(', ') : String(f.items));
+    if (result.storageUrl) {
+      setReceiptUrl(result.storageUrl);
+      setReceiptUri(result.imageUri);
+    }
+    setScanVisible(false);
+  };
 
   useEffect(() => {
     if ((vendor.trim() || description.trim()) && rules.length > 0) {
@@ -159,6 +180,16 @@ export default function AddExpenseScreen() {
         <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>
           Add Expense
         </Text>
+
+        {hasScanApi && (
+          <TouchableOpacity
+            onPress={() => { hapticLight(); setScanVisible(true); }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#334155', borderRadius: 12, padding: 14, marginBottom: 24 }}
+          >
+            <Ionicons name="scan" size={22} color="#3B82F6" />
+            <Text style={{ color: '#3B82F6', fontWeight: '600', fontSize: 16 }}>Scan receipt</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Date</Text>
         <TextInput
@@ -358,6 +389,13 @@ export default function AddExpenseScreen() {
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Save</Text>
           )}
         </TouchableOpacity>
+
+        <SmartPhotoCapture
+          visible={scanVisible}
+          onClose={() => setScanVisible(false)}
+          onExtracted={applyScanResult}
+          expectedType="receipt"
+        />
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>

@@ -7,15 +7,19 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useUploadDocument } from '../../src/hooks/useDocuments';
-import { useCustomers } from '../../src/hooks/useCustomers';
-import { useVendors } from '../../src/hooks/useVendors';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../src/services/env';
 import type { DocType, DocCategory } from '../../src/types/documents';
+import { SmartPhotoCapture, type SmartPhotoCaptureResult } from '../../src/components/SmartPhotoCapture';
+import { hasScanApi } from '../../src/services/scanDocument';
+import { hapticLight } from '../../src/lib/haptics';
 
 const DOC_TYPES: { id: DocType; label: string }[] = [
   { id: 'contract', label: 'Contract' },
@@ -52,8 +56,6 @@ const inputStyle = {
 export default function UploadDocumentScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { data: customers = [] } = useCustomers();
-  const { data: vendors = [] } = useVendors();
   const uploadDoc = useUploadDocument();
 
   const [fileUri, setFileUri] = useState<string | null>(null);
@@ -62,15 +64,31 @@ export default function UploadDocumentScreen() {
   const [description, setDescription] = useState('');
   const [docType, setDocType] = useState<DocType>('other');
   const [category, setCategory] = useState<DocCategory | null>(null);
-  const [relatedCustomerId, setRelatedCustomerId] = useState<string | null>(null);
-  const [relatedVendorId, setRelatedVendorId] = useState<string | null>(null);
   const [expirationDate, setExpirationDate] = useState('');
   const [isSigned, setIsSigned] = useState(false);
   const [signedDate, setSignedDate] = useState('');
   const [signedBy, setSignedBy] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [scanVisible, setScanVisible] = useState(false);
 
   const canSave = hasSupabaseEnv && user && fileUri && filename && name.trim();
+
+  const applyScanResult = (result: SmartPhotoCaptureResult) => {
+    setFileUri(result.imageUri);
+    setFilename('scanned-document.jpg');
+    const f = result.fields;
+    if (result.documentType === 'id_document') {
+      setDocType('license');
+      if (f.full_name != null) setName(String(f.full_name));
+      if (f.document_type != null) setDescription((prev) => (prev ? `${prev} Type: ${f.document_type}` : `Type: ${f.document_type}`));
+      if (f.expiry_date != null) setExpirationDate(String(f.expiry_date).slice(0, 10));
+      if (f.document_number != null) setDescription((prev) => (prev ? `${prev} No: ${f.document_number}` : `No: ${f.document_number}`));
+    } else {
+      if (f.store_name != null || f.provider_name != null) setName(String(f.store_name ?? f.provider_name ?? 'Scanned document'));
+      if (f.notes != null) setDescription(String(f.notes));
+    }
+    setScanVisible(false);
+  };
 
   const pickFile = async () => {
     try {
@@ -102,8 +120,8 @@ export default function UploadDocumentScreen() {
         description: description.trim() || undefined,
         doc_type: docType,
         category: category ?? undefined,
-        related_customer_id: relatedCustomerId ?? null,
-        related_vendor_id: relatedVendorId ?? null,
+        related_customer_id: null,
+        related_vendor_id: null,
         expiration_date: expirationDate.trim() || null,
         is_signed: isSigned,
         signed_date: signedDate.trim() || null,
@@ -128,8 +146,8 @@ export default function UploadDocumentScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#0F172A' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -137,6 +155,16 @@ export default function UploadDocumentScreen() {
         <Text style={{ color: '#F8FAFC', fontSize: 24, fontWeight: 'bold', marginBottom: 24 }}>
           Upload Document
         </Text>
+
+        {hasScanApi && (
+          <TouchableOpacity
+            onPress={() => { hapticLight(); setScanVisible(true); }}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#334155', borderRadius: 12, padding: 14, marginBottom: 24 }}
+          >
+            <Ionicons name="scan" size={22} color="#3B82F6" />
+            <Text style={{ color: '#3B82F6', fontWeight: '600', fontSize: 16 }}>Scan ID, passport, or document</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>File (PDF, JPG, PNG) *</Text>
         <TouchableOpacity
@@ -201,70 +229,6 @@ export default function UploadDocumentScreen() {
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{c.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Link to Customer</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={() => setRelatedCustomerId(null)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: !relatedCustomerId ? '#3B82F6' : '#1E293B',
-              marginRight: 8,
-            }}
-          >
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
-          </TouchableOpacity>
-          {customers.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => setRelatedCustomerId(c.id)}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: relatedCustomerId === c.id ? '#3B82F6' : '#1E293B',
-                marginRight: 8,
-              }}
-            >
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>
-                {c.company_name || c.contact_name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Link to Vendor</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={() => setRelatedVendorId(null)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: !relatedVendorId ? '#3B82F6' : '#1E293B',
-              marginRight: 8,
-            }}
-          >
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
-          </TouchableOpacity>
-          {vendors.map((v) => (
-            <TouchableOpacity
-              key={v.id}
-              onPress={() => setRelatedVendorId(v.id)}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: relatedVendorId === v.id ? '#3B82F6' : '#1E293B',
-                marginRight: 8,
-              }}
-            >
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>{v.company_name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -355,7 +319,13 @@ export default function UploadDocumentScreen() {
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Save</Text>
           )}
         </TouchableOpacity>
+
+        <SmartPhotoCapture
+          visible={scanVisible}
+          onClose={() => setScanVisible(false)}
+          onExtracted={applyScanResult}
+        />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

@@ -41,3 +41,6 @@ export const borderRadius = {
   lg: 16,
   full: 9999,
 } as const;
+
+/** Minimum touch target size (Apple HIG). */
+export const MIN_TOUCH_TARGET = 44;

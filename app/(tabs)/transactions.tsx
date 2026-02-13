@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import { hasSupabaseEnv } from '../../src/services/env';
 import { getCategoryName } from '../../src/lib/categories';
 import { Skeleton, EmptyState } from '../../src/components/ui';
 import { OfflineBanner } from '../../src/components/OfflineBanner';
+import { hapticLight } from '../../src/lib/haptics';
+import { MIN_TOUCH_TARGET } from '../../src/lib/constants';
 import type { Transaction } from '../../src/types/transactions';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 
@@ -46,7 +48,7 @@ function groupByDate(transactions: Transaction[]): { label: string; data: Transa
   });
 }
 
-function TransactionRow({
+const TransactionRow = React.memo(function TransactionRow({
   item,
   onPress,
 }: {
@@ -59,11 +61,15 @@ function TransactionRow({
     : `-$${Math.abs(item.amount).toFixed(2)}`;
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={() => {
+        hapticLight();
+        onPress();
+      }}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        minHeight: MIN_TOUCH_TARGET,
         paddingVertical: 12,
         paddingHorizontal: 16,
         backgroundColor: '#1E293B',
@@ -106,7 +112,7 @@ function TransactionRow({
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 export default function TransactionsScreen() {
   const router = useRouter();
@@ -297,13 +303,18 @@ export default function TransactionsScreen() {
       )}
 
       <TouchableOpacity
-        onPress={() => setFabOpen(true)}
+        onPress={() => {
+          hapticLight();
+          setFabOpen(true);
+        }}
         style={{
           position: 'absolute',
           right: 24,
           bottom: 24,
           width: 56,
           height: 56,
+          minWidth: MIN_TOUCH_TARGET,
+          minHeight: MIN_TOUCH_TARGET,
           borderRadius: 28,
           backgroundColor: '#3B82F6',
           justifyContent: 'center',
@@ -342,55 +353,67 @@ export default function TransactionsScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => {
+                hapticLight();
                 setFabOpen(false);
                 router.push('/(modals)/add-expense' as never);
               }}
               style={{
                 backgroundColor: '#334155',
                 padding: 16,
+                minHeight: MIN_TOUCH_TARGET,
                 borderRadius: 12,
                 marginBottom: 8,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Add Expense</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
+                hapticLight();
                 setFabOpen(false);
                 router.push('/(modals)/add-income' as never);
               }}
               style={{
                 backgroundColor: '#334155',
                 padding: 16,
+                minHeight: MIN_TOUCH_TARGET,
                 borderRadius: 12,
                 marginBottom: 8,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Add Income</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
+                hapticLight();
                 setFabOpen(false);
                 router.push('/(modals)/scan-receipt' as never);
               }}
               style={{
                 backgroundColor: '#334155',
                 padding: 16,
+                minHeight: MIN_TOUCH_TARGET,
                 borderRadius: 12,
                 marginBottom: 8,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Scan Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
+                hapticLight();
                 setFabOpen(false);
                 router.push('/(modals)/upload-statement' as never);
               }}
               style={{
                 backgroundColor: '#334155',
                 padding: 16,
+                minHeight: MIN_TOUCH_TARGET,
                 borderRadius: 12,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 16 }}>Upload Statement</Text>

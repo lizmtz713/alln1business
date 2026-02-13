@@ -22,14 +22,29 @@ export function GoogleSignInButton({
   const loading = externalLoading || internalLoading;
 
   async function handlePress() {
+    console.log('[GoogleSignInButton] handlePress called');
+    if (!signInWithGoogle) {
+      console.error('[GoogleSignInButton] signInWithGoogle is undefined');
+      return;
+    }
     setInternalLoading(true);
-    const { error } = await signInWithGoogle();
-    setInternalLoading(false);
-    if (error) {
-      toast.show(error, 'error');
-      onError?.(error);
-    } else if (onSuccess) {
-      onSuccess();
+    try {
+      const { error } = await signInWithGoogle();
+      setInternalLoading(false);
+      if (error) {
+        console.log('[GoogleSignInButton] signInWithGoogle error:', error);
+        toast.show(error, 'error');
+        onError?.(error);
+      } else if (onSuccess) {
+        console.log('[GoogleSignInButton] signInWithGoogle success');
+        onSuccess();
+      }
+    } catch (e) {
+      setInternalLoading(false);
+      const msg = (e as Error)?.message ?? 'Unknown error';
+      console.error('[GoogleSignInButton] handlePress threw:', e);
+      toast.show(msg, 'error');
+      onError?.(msg);
     }
   }
 

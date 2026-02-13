@@ -43,15 +43,7 @@ export function useBills(params?: {
       if (!userId) return [];
       let q = supabase
         .from('bills')
-        .select(
-          `
-          *,
-          vendors (
-            company_name,
-            contact_name
-          )
-        `
-        )
+        .select('*')
         .eq('user_id', userId)
         .neq('status', 'cancelled')
         .order('due_date', { ascending: true })
@@ -68,8 +60,7 @@ export function useBills(params?: {
         list = list.filter(
           (b) =>
             b.bill_name?.toLowerCase().includes(term) ||
-            b.provider_name?.toLowerCase().includes(term) ||
-            (b.vendors as { company_name?: string } | null)?.company_name?.toLowerCase().includes(term)
+            (b.provider_name ?? '').toLowerCase().includes(term)
         );
       }
       if (params?.due === 'overdue') list = list.filter(isOverdue);

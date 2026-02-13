@@ -6,11 +6,11 @@ import { supabase, hasSupabaseConfig } from '../../src/services/supabase';
 function extractParamsFromUrl(url: string): { access_token?: string; refresh_token?: string } {
   try {
     const parsed = new URL(url);
-    const hash = parsed.hash?.substring(1) ?? '';
-    const params = new URLSearchParams(hash);
+    const fromHash = new URLSearchParams(parsed.hash?.substring(1) ?? '');
+    const fromQuery = new URLSearchParams(parsed.search?.substring(1) ?? '');
     return {
-      access_token: params.get('access_token') ?? undefined,
-      refresh_token: params.get('refresh_token') ?? undefined,
+      access_token: fromHash.get('access_token') ?? fromQuery.get('access_token') ?? undefined,
+      refresh_token: fromHash.get('refresh_token') ?? fromQuery.get('refresh_token') ?? undefined,
     };
   } catch {
     return {};

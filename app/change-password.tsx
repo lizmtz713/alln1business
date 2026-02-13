@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../src/providers/AuthProvider';
 import { useToast } from '../src/components/ui';
 import { hapticSuccess } from '../src/lib/haptics';
+import { sanitizePasswordInput } from '../src/lib/sanitize';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -22,17 +23,19 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (newPassword.length < 6) {
+    const safeNew = sanitizePasswordInput(newPassword);
+    const safeConfirm = sanitizePasswordInput(confirmPassword);
+    if (safeNew.length < 6) {
       toast.show('Password must be at least 6 characters.', 'error');
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (safeNew !== safeConfirm) {
       toast.show('Passwords do not match.', 'error');
       return;
     }
 
     setLoading(true);
-    const { error } = await updatePassword(newPassword);
+    const { error } = await updatePassword(safeNew);
     setLoading(false);
 
     if (error) {

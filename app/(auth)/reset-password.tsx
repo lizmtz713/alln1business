@@ -15,6 +15,7 @@ import { useAuth } from '../../src/providers/AuthProvider';
 import { useToast } from '../../src/components/ui';
 import { supabase, hasSupabaseConfig } from '../../src/services/supabase';
 import { hapticSuccess } from '../../src/lib/haptics';
+import { sanitizePasswordInput } from '../../src/lib/sanitize';
 
 function extractParamsFromUrl(url: string): { access_token?: string; refresh_token?: string; type?: string } {
   try {
@@ -81,17 +82,19 @@ export default function ResetPasswordScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    if (newPassword.length < 6) {
+    const safeNew = sanitizePasswordInput(newPassword);
+    const safeConfirm = sanitizePasswordInput(confirmPassword);
+    if (safeNew.length < 6) {
       toast.show('Password must be at least 6 characters.', 'error');
       return;
     }
-    if (newPassword !== confirmPassword) {
+    if (safeNew !== safeConfirm) {
       toast.show('Passwords do not match.', 'error');
       return;
     }
 
     setLoading(true);
-    const { error } = await updatePassword(newPassword);
+    const { error } = await updatePassword(safeNew);
     setLoading(false);
 
     if (error) {

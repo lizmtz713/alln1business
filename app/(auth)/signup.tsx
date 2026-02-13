@@ -9,10 +9,12 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { GoogleSignInButton } from '../../src/components/GoogleSignInButton';
+import { sanitizeEmail, isValidEmailFormat, sanitizePasswordInput } from '../../src/lib/sanitize';
 
 export default function SignupScreen() {
   const { signUp, hasSupabaseConfig } = useAuth();
@@ -22,28 +24,51 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [confirmedEmail, setConfirmedEmail] = useState('');
 
   const handleSignUp = async () => {
+    console.log('[Signup] handleSignUp called');
     setError(null);
-    if (!email.trim() || !password || !confirmPassword) {
+    setNeedsConfirmation(false);
+    const safeEmail = sanitizeEmail(email);
+    const safePassword = sanitizePasswordInput(password);
+    if (!safeEmail || !safePassword || !confirmPassword) {
       setError('Please fill in all fields.');
       return;
     }
-    if (password.length < 6) {
+    if (!isValidEmailFormat(safeEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (safePassword.length < 6) {
       setError('Password must be at least 6 characters.');
       return;
     }
-    if (password !== confirmPassword) {
+    if (safePassword !== sanitizePasswordInput(confirmPassword)) {
       setError('Passwords do not match.');
       return;
     }
     setLoading(true);
-    const { error: err } = await signUp(email.trim(), password);
-    setLoading(false);
-    if (err) {
-      setError(err.message ?? 'Sign up failed.');
-    } else {
-      router.replace('/');
+    try {
+      const { error: err, needsConfirmation: needs } = await signUp(safeEmail, safePassword);
+      setLoading(false);
+      if (err) {
+        const msg = err.message ?? 'Sign up failed.';
+        setError(msg);
+        Alert.alert('Sign Up Failed', msg);
+      } else if (needs) {
+        setConfirmedEmail(safeEmail);
+        setNeedsConfirmation(true);
+      } else {
+        router.replace('/');
+      }
+    } catch (e) {
+      setLoading(false);
+      const msg = (e as Error)?.message ?? 'Sign up failed.';
+      console.error('[Signup] handleSignUp threw:', e);
+      setError(msg);
+      Alert.alert('Sign Up Failed', msg);
     }
   };
 
@@ -54,6 +79,24 @@ export default function SignupScreen() {
         <Text className="text-center text-slate-400">
           Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local.
         </Text>
+      </View>
+    );
+  }
+
+  if (needsConfirmation) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-900 p-8">
+        <Text className="mb-4 text-4xl">✉️</Text>
+        <Text className="mb-2 text-2xl font-bold text-white text-center">Check your email</Text>
+        <Text className="mb-6 text-center text-slate-400">
+          We sent a confirmation link to {confirmedEmail}. Click the link to activate your account, then sign in below.
+        </Text>
+        <TouchableOpacity
+          className="rounded-xl bg-blue-500 px-6 py-3"
+          onPress={() => router.replace('/(auth)/login' as never)}
+        >
+          <Text className="font-semibold text-white">Go to Sign in</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -144,14 +187,19 @@ export default function SignupScreen() {
           </Pressable>
         </Link>
 
-        <View className="mt-8 items-center">
-          <Text className="text-slate-500">or</Text>
-          <View className="mt-3 w-full">
-            <GoogleSignInButton
-              onSuccess={() => router.replace('/')}
-              onError={(msg) => setError(msg)}
-            />
+        <View className="mt-8 w-full">
+          <View className="mb-3 flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-slate-600" />
+            <Text className="text-slate-500">or continue with</Text>
+            <View className="h-px flex-1 bg-slate-600" />
           </View>
+          <GoogleSignInButton
+            onSuccess={() => router.replace('/')}
+            onError={(msg) => {
+              setError(msg);
+              Alert.alert('Google Sign In Failed', msg);
+            }}
+          />
         </View>
 
         <Text className="mt-8 text-center text-xs text-slate-500">

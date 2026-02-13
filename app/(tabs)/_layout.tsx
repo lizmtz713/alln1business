@@ -1,7 +1,19 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/providers/AuthProvider';
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const { session, loading, hasSupabaseConfig } = useAuth();
+
+  useEffect(() => {
+    if (loading || !hasSupabaseConfig) return;
+    if (!session) {
+      router.replace('/');
+    }
+  }, [loading, session, hasSupabaseConfig, router]);
+
   return (
     <Tabs
       screenOptions={{
@@ -22,11 +34,11 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="transactions"
+        name="household"
         options={{
-          title: 'Transactions',
+          title: 'My Household',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="card" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />
@@ -35,16 +47,16 @@ export default function TabsLayout() {
         options={{
           title: 'Documents',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="folder" size={size} color={color} />
+            <Ionicons name="folder-open" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="calendar"
         options={{
-          title: 'Chat',
+          title: 'Calendar',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+            <Ionicons name="calendar" size={size} color={color} />
           ),
         }}
       />
@@ -53,8 +65,22 @@ export default function TabsLayout() {
         options={{
           title: 'More',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="menu" size={size} color={color} />
+            <Ionicons name="ellipsis-horizontal" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="transactions"
+        options={{
+          href: null,
+          title: 'Transactions',
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          href: null,
+          title: 'Chat',
         }}
       />
     </Tabs>

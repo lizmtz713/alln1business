@@ -38,13 +38,7 @@ export function useDocuments(filters?: {
       if (!userId) return [];
       let q = supabase
         .from('documents')
-        .select(
-          `
-          *,
-          customers (company_name, contact_name),
-          vendors (company_name, contact_name)
-        `
-        )
+        .select('*')
         .eq('user_id', userId)
         .eq('is_template', false)
         .order('created_at', { ascending: false });
@@ -87,13 +81,7 @@ export function useDocument(id: string | undefined) {
       if (!id || !userId) return null;
       const { data, error } = await supabase
         .from('documents')
-        .select(
-          `
-          *,
-          customers (company_name, contact_name),
-          vendors (company_name, contact_name)
-        `
-        )
+        .select('*')
         .eq('id', id)
         .eq('user_id', userId)
         .single();

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 
-const STALE_TIME = 30 * 1000;
-const GC_TIME = 10 * 60 * 1000;
+/** 5 min: list/detail screens load instantly on revisit from cache */
+const STALE_TIME_MS = 5 * 60 * 1000;
+const GC_TIME_MS = 10 * 60 * 1000;
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -10,8 +11,8 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: STALE_TIME,
-            gcTime: GC_TIME,
+            staleTime: STALE_TIME_MS,
+            gcTime: GC_TIME_MS,
             retry: (failureCount, error) => {
               const msg = String(error);
               if (/network|fetch failed|offline/i.test(msg)) return failureCount < 1;

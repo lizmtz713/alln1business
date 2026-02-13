@@ -7,11 +7,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDocument, useUpdateDocument } from '../../../src/hooks/useDocuments';
-import { useCustomers } from '../../../src/hooks/useCustomers';
-import { useVendors } from '../../../src/hooks/useVendors';
 import { hasSupabaseEnv } from '../../../src/services/env';
 import type { DocType, DocCategory } from '../../../src/types/documents';
 
@@ -51,16 +51,12 @@ export default function EditDocumentScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: doc, isLoading } = useDocument(id);
-  const { data: customers = [] } = useCustomers();
-  const { data: vendors = [] } = useVendors();
   const updateDoc = useUpdateDocument();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [docType, setDocType] = useState<DocType>('other');
   const [category, setCategory] = useState<DocCategory | null>(null);
-  const [relatedCustomerId, setRelatedCustomerId] = useState<string | null>(null);
-  const [relatedVendorId, setRelatedVendorId] = useState<string | null>(null);
   const [expirationDate, setExpirationDate] = useState('');
   const [isSigned, setIsSigned] = useState(false);
   const [signedDate, setSignedDate] = useState('');
@@ -73,8 +69,6 @@ export default function EditDocumentScreen() {
       setDescription(doc.description ?? '');
       setDocType((doc.doc_type as DocType) ?? 'other');
       setCategory((doc.category as DocCategory) ?? null);
-      setRelatedCustomerId(doc.related_customer_id ?? null);
-      setRelatedVendorId(doc.related_vendor_id ?? null);
       setExpirationDate(doc.expiration_date?.split('T')[0] ?? '');
       setIsSigned(doc.is_signed ?? false);
       setSignedDate(doc.signed_date?.split('T')[0] ?? '');
@@ -100,8 +94,8 @@ export default function EditDocumentScreen() {
           description: description.trim() || null,
           doc_type: docType,
           category: category ?? null,
-          related_customer_id: relatedCustomerId ?? null,
-          related_vendor_id: relatedVendorId ?? null,
+          related_customer_id: null,
+          related_vendor_id: null,
           expiration_date: expirationDate.trim() || null,
           is_signed: isSigned,
           signed_date: signedDate.trim() || null,
@@ -135,8 +129,8 @@ export default function EditDocumentScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#0F172A' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -200,70 +194,6 @@ export default function EditDocumentScreen() {
               }}
             >
               <Text style={{ color: '#F8FAFC', fontSize: 14 }}>{c.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Link to Customer</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={() => setRelatedCustomerId(null)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: !relatedCustomerId ? '#3B82F6' : '#1E293B',
-              marginRight: 8,
-            }}
-          >
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
-          </TouchableOpacity>
-          {customers.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => setRelatedCustomerId(c.id)}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: relatedCustomerId === c.id ? '#3B82F6' : '#1E293B',
-                marginRight: 8,
-              }}
-            >
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>
-                {c.company_name || c.contact_name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Link to Vendor</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={() => setRelatedVendorId(null)}
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: !relatedVendorId ? '#3B82F6' : '#1E293B',
-              marginRight: 8,
-            }}
-          >
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
-          </TouchableOpacity>
-          {vendors.map((v) => (
-            <TouchableOpacity
-              key={v.id}
-              onPress={() => setRelatedVendorId(v.id)}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: relatedVendorId === v.id ? '#3B82F6' : '#1E293B',
-                marginRight: 8,
-              }}
-            >
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>{v.company_name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -355,6 +285,6 @@ export default function EditDocumentScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

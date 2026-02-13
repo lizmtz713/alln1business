@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, fontSize } from '../../lib/constants';
+import { colors, spacing, fontSize, MIN_TOUCH_TARGET } from '../../lib/constants';
+import { hapticLight } from '../../lib/haptics';
 
 type Props = {
   title: string;
@@ -66,12 +67,19 @@ export function EmptyState({
       )}
       {ctaLabel && onPress && (
         <TouchableOpacity
-          onPress={onPress}
+          onPress={() => {
+            hapticLight();
+            onPress();
+          }}
           style={{
             backgroundColor: colors.primary,
             borderRadius: 12,
             paddingHorizontal: spacing.xxl,
             paddingVertical: spacing.md,
+            minHeight: MIN_TOUCH_TARGET,
+            minWidth: MIN_TOUCH_TARGET,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
           <Text style={{ color: '#fff', fontWeight: '600', fontSize: fontSize.sm }}>

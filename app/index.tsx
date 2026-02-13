@@ -1,19 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../src/providers/AuthProvider';
+
+const INTRO_SEEN_KEY = 'alln1_intro_seen';
 
 export default function IndexScreen() {
   const router = useRouter();
   const { session, profile, profileLoadError, loading, hasSupabaseConfig } = useAuth();
+  const [introChecked, setIntroChecked] = useState(false);
 
   useEffect(() => {
     if (loading) return;
-
     if (!hasSupabaseConfig) return;
 
     if (!session) {
-      router.replace('/(auth)/login' as never);
+      AsyncStorage.getItem(INTRO_SEEN_KEY).then((seen) => {
+        setIntroChecked(true);
+        router.replace((seen === 'true' ? '/(auth)/login' : '/(auth)/intro') as never);
+      });
       return;
     }
 
@@ -27,7 +33,7 @@ export default function IndexScreen() {
     router.replace('/(tabs)' as never);
   }, [loading, session, profile?.onboarding_completed, profileLoadError, hasSupabaseConfig, router]);
 
-  if (loading) {
+  if (loading || (!session && !introChecked)) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-900">
         <ActivityIndicator size="large" color="#3B82F6" />

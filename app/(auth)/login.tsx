@@ -9,10 +9,12 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '../../src/providers/AuthProvider';
 import { GoogleSignInButton } from '../../src/components/GoogleSignInButton';
+import { sanitizeEmail, isValidEmailFormat, sanitizePasswordInput } from '../../src/lib/sanitize';
 
 export default function LoginScreen() {
   const { signIn, hasSupabaseConfig } = useAuth();
@@ -23,18 +25,35 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
+    console.log('[Login] handleSignIn called');
     setError(null);
-    if (!email.trim() || !password) {
+    const safeEmail = sanitizeEmail(email);
+    const safePassword = sanitizePasswordInput(password);
+    if (!safeEmail || !safePassword) {
       setError('Please enter email and password.');
       return;
     }
+    if (!isValidEmailFormat(safeEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setLoading(true);
-    const { error: err } = await signIn(email.trim(), password);
-    setLoading(false);
-    if (err) {
-      setError(err?.message ?? 'Sign in failed.');
-    } else {
-      router.replace('/');
+    try {
+      const { error: err } = await signIn(safeEmail, safePassword);
+      setLoading(false);
+      if (err) {
+        const msg = err?.message ?? 'Sign in failed.';
+        setError(msg);
+        Alert.alert('Sign In Failed', msg);
+      } else {
+        router.replace('/');
+      }
+    } catch (e) {
+      setLoading(false);
+      const msg = (e as Error)?.message ?? 'Sign in failed.';
+      console.error('[Login] handleSignIn threw:', e);
+      setError(msg);
+      Alert.alert('Sign In Failed', msg);
     }
   };
 
@@ -58,6 +77,14 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* DEBUG: tap this to verify touches work. Remove when done debugging. */}
+        <TouchableOpacity
+          onPress={() => Alert.alert('TEST', 'Button works')}
+          style={{ backgroundColor: 'red', padding: 12, marginBottom: 16, borderRadius: 8 }}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>TEST TOUCH (tap me)</Text>
+        </TouchableOpacity>
+
         <View className="mb-8 items-center">
           <Text className="text-3xl font-bold text-white">ALLN1 Business</Text>
           <Text className="mt-2 text-slate-400">Sign in to continue</Text>
@@ -126,14 +153,19 @@ export default function LoginScreen() {
           </Pressable>
         </Link>
 
-        <View className="mt-8 items-center">
-          <Text className="text-slate-500">or</Text>
-          <View className="mt-3 w-full">
-            <GoogleSignInButton
-              onSuccess={() => router.replace('/')}
-              onError={(msg) => setError(msg)}
-            />
+        <View className="mt-8 w-full">
+          <View className="mb-3 flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-slate-600" />
+            <Text className="text-slate-500">or continue with</Text>
+            <View className="h-px flex-1 bg-slate-600" />
           </View>
+          <GoogleSignInButton
+            onSuccess={() => router.replace('/')}
+            onError={(msg) => {
+              setError(msg);
+              Alert.alert('Google Sign In Failed', msg);
+            }}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

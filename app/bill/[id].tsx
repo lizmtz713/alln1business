@@ -68,8 +68,14 @@ export default function BillDetailScreen() {
 
   if (isLoading || !bill) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+      <View style={{ flex: 1, backgroundColor: '#0F172A', padding: 24 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
+          <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          {!isLoading && !bill && <Text style={{ color: '#94A3B8', marginTop: 12 }}>Bill not found</Text>}
+        </View>
       </View>
     );
   }

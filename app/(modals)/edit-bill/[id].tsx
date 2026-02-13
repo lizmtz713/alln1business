@@ -7,11 +7,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useBill, useUpdateBill } from '../../../src/hooks/useBills';
-import { useVendors } from '../../../src/hooks/useVendors';
 import { useAuth } from '../../../src/providers/AuthProvider';
 import { hasSupabaseEnv } from '../../../src/services/env';
 import { uploadDocument } from '../../../src/services/storage';
@@ -38,12 +39,10 @@ export default function EditBillScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: bill, isLoading } = useBill(id);
-  const { data: vendors = [] } = useVendors();
   const { user } = useAuth();
   const updateBill = useUpdateBill();
 
   const [billName, setBillName] = useState('');
-  const [vendorId, setVendorId] = useState<string | null>(null);
   const [providerName, setProviderName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [providerPhone, setProviderPhone] = useState('');
@@ -64,7 +63,6 @@ export default function EditBillScreen() {
   useEffect(() => {
     if (bill) {
       setBillName(bill.bill_name ?? '');
-      setVendorId(bill.vendor_id);
       setProviderName(bill.provider_name ?? '');
       setAccountNumber(bill.account_number ?? '');
       setProviderPhone(bill.provider_phone ?? '');
@@ -96,7 +94,7 @@ export default function EditBillScreen() {
         id: billId!,
         updates: {
           bill_name: billName.trim(),
-          vendor_id: vendorId,
+          vendor_id: null,
           provider_name: providerName.trim() || null,
           account_number: accountNumber.trim() || null,
           provider_phone: providerPhone.trim() || null,
@@ -158,8 +156,8 @@ export default function EditBillScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-      <ScrollView contentContainerStyle={{ padding: 24 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#0F172A' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <ScrollView contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
           <Text style={{ color: '#3B82F6', fontSize: 16 }}>← Back</Text>
         </TouchableOpacity>
@@ -169,19 +167,7 @@ export default function EditBillScreen() {
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Bill Name *</Text>
         <TextInput style={inputStyle} value={billName} onChangeText={setBillName} placeholder="e.g. Electric Bill" placeholderTextColor="#64748B" />
 
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Vendor (optional)</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-          <TouchableOpacity onPress={() => setVendorId(null)} style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: !vendorId ? '#3B82F6' : '#1E293B', marginRight: 8 }}>
-            <Text style={{ color: '#F8FAFC' }}>None</Text>
-          </TouchableOpacity>
-          {vendors.map((v) => (
-            <TouchableOpacity key={v.id} onPress={() => setVendorId(v.id)} style={{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, backgroundColor: vendorId === v.id ? '#3B82F6' : '#1E293B', marginRight: 8 }}>
-              <Text style={{ color: '#F8FAFC' }} numberOfLines={1}>{v.company_name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Provider Name</Text>
+        <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Provider / Payee Name</Text>
         <TextInput style={inputStyle} value={providerName} onChangeText={setProviderName} placeholder="Optional" placeholderTextColor="#64748B" />
 
         <Text style={{ color: '#94A3B8', marginBottom: 8 }}>Account Number</Text>
@@ -233,6 +219,6 @@ export default function EditBillScreen() {
           {updateBill.isPending ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Save</Text>}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
