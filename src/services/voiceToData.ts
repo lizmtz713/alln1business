@@ -19,7 +19,7 @@ export type VoiceToDataResult = {
   fields: Record<string, unknown>;
 };
 
-const SYSTEM_PROMPT = `You are a household data parser for Life OS. Parse the user's spoken or typed household data entry.
+const SYSTEM_PROMPT = `You are a household data parser for Alln1Home. Parse the user's spoken or typed household data entry.
 
 Categories: bill, family_member, vehicle, pet, appointment, contact, document, reminder.
 

@@ -183,8 +183,8 @@ export function useSendChatMessage() {
         : [];
 
       const reversed = [...(history as Array<{ role: string; content: string }>)].reverse();
-      const recent = reversed.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-      const messages = recent.filter((m) => m.role !== 'system');
+      const recent = reversed.slice(-12).map((m) => ({ role: m.role as 'user' | 'assistant' | 'system', content: m.content }));
+      const messages = recent.filter((m) => m.role !== 'system') as Array<{ role: 'user' | 'assistant'; content: string }>;
       if (messages.length === 0 || messages[messages.length - 1]?.content !== trimmed) {
         messages.push({ role: 'user', content: trimmed });
       }

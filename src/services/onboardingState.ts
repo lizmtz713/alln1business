@@ -64,5 +64,5 @@ export function getDefaultState(): PersistedOnboardingState {
 }
 
 export function getWelcomeMessage(): string {
-  return "Welcome to Life OS! Let's set up your household. Who lives with you?";
+  return "Welcome to Alln1Home! Let's set up your household. Who lives with you?";
 }

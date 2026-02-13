@@ -46,6 +46,8 @@ export default function FamilyScreen() {
           appointment_time: null,
           location: null,
           notes: 'Birthday',
+          is_recurring: true,
+          recurring_rule: 'FREQ=YEARLY',
         });
         Alert.alert('Added', `${member.name}'s birthday added to your calendar.`);
       } catch (e) {

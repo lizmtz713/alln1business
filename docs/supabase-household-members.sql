@@ -1,4 +1,4 @@
--- Household members (family) for Life OS voice onboarding and household context
+-- Household members (family) for Alln1Home voice onboarding and household context
 create extension if not exists "uuid-ossp";
 
 create table if not exists public.household_members (

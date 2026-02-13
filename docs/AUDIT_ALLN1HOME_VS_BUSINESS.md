@@ -3,7 +3,7 @@
 **Purpose:** Categorize every file, screen, service, component, and database table as **HOUSEHOLD** (belongs in Alln1Home), **BUSINESS** (does not belong; remove for household app), or **SHARED** (works for both).  
 **No deletions** — use this to decide what to keep or remove.
 
-**Scope:** Main app only (`app/`, `src/`, `docs/*.sql`). Excludes `lifeos-app/`, `components/` (Expo template), and other non-app folders.
+**Scope:** Main app only (`app/`, `src/`, `docs/*.sql`). Excludes legacy nested apps (e.g. former lifeos-app, now removed), `components/` (Expo template), and other non-app folders.
 
 ---
 

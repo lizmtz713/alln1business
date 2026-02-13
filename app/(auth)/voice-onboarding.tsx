@@ -223,6 +223,11 @@ export default function VoiceOnboardingScreen() {
         await createPet.mutateAsync({
           name: p.name,
           type: p.type ?? null,
+          breed: null,
+          vet_name: null,
+          vet_phone: null,
+          vaccination_dates: null,
+          notes: null,
         });
       }
       const defaultDue = format(addMonths(setDate(new Date(), 15), 1), 'yyyy-MM-dd');

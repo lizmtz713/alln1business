@@ -943,7 +943,7 @@ Everything in Family, plus:
 
 ## Why This Wins
 
-| Feature | Competitors | Life OS |
+| Feature | Competitors | Alln1Home |
 |---------|-------------|---------|
 | Bill tracking | Yes | + AI analysis |
 | Calendar | Yes | + Family integration |
@@ -992,7 +992,7 @@ Everything in Family, plus:
 
 **Voice-First Era:**
 - App becomes ambient
-- "Hey Life OS" always listening (privacy-preserved)
+- "Hey Alln1Home" always listening (privacy-preserved)
 - AR glasses integration
 - Proactive assistant
 
@@ -1015,7 +1015,7 @@ Everything in Family, plus:
 ## PROMPT 1: PROJECT SETUP
 
 ```
-Create a React Native app called "Life OS" for household management.
+Create a React Native app called "Alln1Home" for household management.
 
 TECH STACK:
 - Expo SDK 52 with TypeScript
@@ -1049,7 +1049,7 @@ Create the project structure and basic navigation.
 ## PROMPT 2: DATABASE SCHEMA
 
 ```
-Create complete Supabase database schema for Life OS household management app.
+Create complete Supabase database schema for Alln1Home household management app.
 
 TABLES NEEDED:
 
@@ -1087,7 +1087,7 @@ Include all fields mentioned in the blueprint for each category.
 ## PROMPT 3: HOME DASHBOARD
 
 ```
-Create the Home Dashboard for Life OS app.
+Create the Home Dashboard for Alln1Home app.
 
 SECTIONS:
 
@@ -1134,7 +1134,7 @@ STYLING:
 ## PROMPT 4: UNIVERSAL SEARCH
 
 ```
-Create universal search feature for Life OS.
+Create universal search feature for Alln1Home.
 
 REQUIREMENTS:
 
@@ -1181,7 +1181,7 @@ Create the search screen with all functionality.
 ## PROMPT 5: BILLS MODULE
 
 ```
-Create the Bills management module for Life OS.
+Create the Bills management module for Alln1Home.
 
 FEATURES:
 
@@ -1230,7 +1230,7 @@ Create all screens for bills management.
 ## PROMPT 6: FAMILY & KIDS MODULE
 
 ```
-Create Family management module for Life OS.
+Create Family management module for Alln1Home.
 
 FEATURES:
 
@@ -1286,7 +1286,7 @@ Create all screens for family management.
 ## PROMPT 7: AI ASSISTANT
 
 ```
-Create AI Assistant feature for Life OS.
+Create AI Assistant feature for Alln1Home.
 
 FEATURES:
 
@@ -1332,7 +1332,7 @@ Create the AI assistant with full functionality.
 ## PROMPT 8: DOCUMENT VAULT
 
 ```
-Create Document Vault for Life OS.
+Create Document Vault for Alln1Home.
 
 FEATURES:
 
@@ -1386,7 +1386,7 @@ Create document vault with all features.
 ## PROMPT 9: NOTIFICATIONS & REMINDERS
 
 ```
-Create Notifications and Reminders system for Life OS.
+Create Notifications and Reminders system for Alln1Home.
 
 FEATURES:
 
@@ -1434,7 +1434,7 @@ Create notifications and reminders system.
 ## PROMPT 10: SETTINGS & PROFILE
 
 ```
-Create Settings and Profile screens for Life OS.
+Create Settings and Profile screens for Alln1Home.
 
 FEATURES:
 
@@ -1525,7 +1525,7 @@ Create all settings screens.
 
 # SUMMARY
 
-**Life OS is:**
+**Alln1Home is:**
 - Your entire household in one app
 - AI that actually helps
 - Simple enough for anyone

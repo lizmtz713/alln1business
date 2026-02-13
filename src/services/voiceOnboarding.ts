@@ -10,7 +10,7 @@ if (!ONBOARDING_API_URL && VOICE_API_URL) {
   ONBOARDING_API_URL = VOICE_API_URL.replace(/\/api\/voice-to-data\/?$/, '') + '/api/voice-onboarding';
 }
 
-const ONBOARDING_SYSTEM = `You are the Life OS voice onboarding assistant. You're having a short, friendly conversation to set up the user's household. Be warm and concise.
+const ONBOARDING_SYSTEM = `You are the Alln1Home voice onboarding assistant. You're having a short, friendly conversation to set up the user's household. Be warm and concise.
 
 You move through steps in order: household → pets → bills → review.
 

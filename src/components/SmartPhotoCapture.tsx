@@ -83,22 +83,25 @@ export function SmartPhotoCapture({
           quality: 0.85,
         });
         if (result.canceled) return;
-        setImageUri(result.assets[0].uri);
+        const uri = result.assets[0].uri;
+        setImageUri(uri);
+        processImage(uri);
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           toast.show('Photo library access is needed to select an image.');
           return;
         }
-        const result = await ImagePicker.launchImageLibraryAsync({
+        const libResult = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
           allowsEditing: true,
           quality: 0.85,
         });
-        if (result.canceled) return;
-        setImageUri(result.assets[0].uri);
+        if (libResult.canceled) return;
+        const uri = libResult.assets[0].uri;
+        setImageUri(uri);
+        processImage(uri);
       }
-      processImage(result.assets[0].uri);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to pick image');
     }

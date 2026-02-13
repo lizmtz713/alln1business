@@ -190,6 +190,9 @@ export function UniversalVoiceInput() {
           model: (f.model as string) ?? null,
           registration_expiry: regDate,
           notes: notes || (f.notes as string) || null,
+          vin: null,
+          insurance_provider: null,
+          insurance_expiry: null,
         });
         toast.show('Vehicle added.');
       } else if (cat === 'pet') {
@@ -201,6 +204,7 @@ export function UniversalVoiceInput() {
           vet_name: (f.vet_name as string) ?? null,
           vet_phone: (f.vet_phone as string) ?? null,
           notes: notes || (f.notes as string) || null,
+          vaccination_dates: null,
         });
         toast.show('Pet added.');
       } else if (cat === 'appointment') {
@@ -225,6 +229,8 @@ export function UniversalVoiceInput() {
           appointment_time: time,
           location: (f.location as string) ?? null,
           notes: (f.notes as string) ?? null,
+          is_recurring: false,
+          recurring_rule: null,
         });
         toast.show('Appointment added.');
       } else if (cat === 'contact') {
@@ -238,6 +244,7 @@ export function UniversalVoiceInput() {
           phone: (f.phone as string) ?? null,
           email: (f.email as string) ?? null,
           notes: (f.notes as string) ?? null,
+          last_service_date: null,
         });
         toast.show('Contact added.');
       } else {

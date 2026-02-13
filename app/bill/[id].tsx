@@ -160,6 +160,8 @@ export default function BillDetailScreen() {
         appointment_time: '09:00',
         location: null,
         notes: `Bill due ${format(parseISO(bill.due_date), 'MMM d')}. Amount: $${Number(bill.amount).toFixed(2)}`,
+        is_recurring: false,
+        recurring_rule: null,
       });
       Alert.alert('Reminder set', `Reminder "${title}" set for ${format(reminderDate, 'MMM d')}.`);
     } catch (e) {

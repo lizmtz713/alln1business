@@ -158,6 +158,8 @@ export function CommandBar() {
             appointment_time: null,
             location: null,
             notes: null,
+            is_recurring: false,
+            recurring_rule: null,
           });
           toast.show('Reminder added.');
           close();
