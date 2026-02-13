@@ -5,11 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../src/providers/AuthProvider';
 
 const INTRO_SEEN_KEY = 'alln1_intro_seen';
+const ONBOARDING_PAUSED_KEY = 'alln1_onboarding_paused';
 
 export default function IndexScreen() {
   const router = useRouter();
   const { session, profile, profileLoadError, loading, hasSupabaseConfig } = useAuth();
   const [introChecked, setIntroChecked] = useState(false);
+  const [pausedChecked, setPausedChecked] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -26,14 +28,23 @@ export default function IndexScreen() {
     if (profileLoadError === 'profiles_table_missing') return;
 
     if (!profile?.onboarding_completed) {
-      router.replace('/(auth)/onboarding' as never);
+      AsyncStorage.getItem(ONBOARDING_PAUSED_KEY).then((paused) => {
+        setPausedChecked(true);
+        if (paused === 'true') {
+          router.replace('/(tabs)' as never);
+        } else {
+          router.replace('/(auth)/voice-onboarding' as never);
+        }
+      });
       return;
     }
 
     router.replace('/(tabs)' as never);
   }, [loading, session, profile?.onboarding_completed, profileLoadError, hasSupabaseConfig, router]);
 
-  if (loading || (!session && !introChecked)) {
+  const waitingForPausedCheck = !profile?.onboarding_completed && !pausedChecked && session;
+
+  if (loading || (!session && !introChecked) || waitingForPausedCheck) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-900">
         <ActivityIndicator size="large" color="#3B82F6" />

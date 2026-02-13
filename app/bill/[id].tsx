@@ -18,9 +18,11 @@ import {
   useDeleteBill,
   isOverdue,
 } from '../../src/hooks/useBills';
+import { useCreateAppointment } from '../../src/hooks/useAppointments';
+import { SmartActionBar } from '../../src/components/SmartActionBar';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { getCategoryName } from '../../src/lib/categories';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addDays } from 'date-fns';
 
 const BILL_STATUS_COLORS: Record<string, string> = {
   pending: '#F59E0B',
@@ -48,6 +50,7 @@ export default function BillDetailScreen() {
   const updateBill = useUpdateBill();
   const markPaid = useMarkBillPaid();
   const deleteBill = useDeleteBill();
+  const createAppointment = useCreateAppointment();
 
   const [showMarkPaid, setShowMarkPaid] = useState(false);
   const [paidAmount, setPaidAmount] = useState('');
@@ -108,6 +111,62 @@ export default function BillDetailScreen() {
     }
   };
 
+  const handleOneTapPaid = () => {
+    if (!canMarkPaid || !id) return;
+    Alert.alert(
+      'Mark as paid?',
+      `Record payment of $${Number(bill.amount).toFixed(2)} for ${bill.bill_name} today?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Paid',
+          onPress: async () => {
+            try {
+              await markPaid.mutateAsync({
+                id,
+                paid_amount: Number(bill.amount),
+                paid_date: format(new Date(), 'yyyy-MM-dd'),
+                payment_method: null,
+                confirmation_number: null,
+              });
+            } catch (e) {
+              Alert.alert('Error', (e as Error).message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCallProvider = () => {
+    const phone = bill.provider_phone?.trim().replace(/\D/g, '');
+    if (phone) Linking.openURL(`tel:${phone}`);
+    else Alert.alert('No number', 'No provider phone number saved.');
+  };
+
+  const handleOpenWebsite = () => {
+    const url = bill.provider_website || bill.payment_url;
+    if (url) Linking.openURL(url);
+    else Alert.alert('No link', 'No website or payment link saved.');
+  };
+
+  const handleSetReminder = async () => {
+    const reminderDate = addDays(parseISO(bill.due_date), -1);
+    const title = `Pay ${bill.bill_name}`;
+    try {
+      await createAppointment.mutateAsync({
+        title,
+        appointment_date: format(reminderDate, 'yyyy-MM-dd'),
+        appointment_time: '09:00',
+        location: null,
+        notes: `Bill due ${format(parseISO(bill.due_date), 'MMM d')}. Amount: $${Number(bill.amount).toFixed(2)}`,
+      });
+      Alert.alert('Reminder set', `Reminder "${title}" set for ${format(reminderDate, 'MMM d')}.`);
+    } catch (e) {
+      Alert.alert('Error', (e as Error).message);
+    }
+  };
+
   const handleDelete = () => {
     Alert.alert('Delete Bill', 'Cancel this bill?', [
       { text: 'No', style: 'cancel' },
@@ -161,6 +220,40 @@ export default function BillDetailScreen() {
             </View>
           )}
         </View>
+
+        <SmartActionBar
+          title="Quick actions"
+          actions={[
+            {
+              id: 'paid',
+              label: 'Paid',
+              icon: 'checkmark-circle-outline',
+              visible: canMarkPaid,
+              onPress: handleOneTapPaid,
+            },
+            {
+              id: 'call',
+              label: 'Call Provider',
+              icon: 'call-outline',
+              visible: Boolean(bill.provider_phone?.trim()),
+              onPress: handleCallProvider,
+            },
+            {
+              id: 'website',
+              label: 'Open Website',
+              icon: 'open-outline',
+              visible: Boolean(bill.provider_website || bill.payment_url),
+              onPress: handleOpenWebsite,
+            },
+            {
+              id: 'reminder',
+              label: 'Set Reminder',
+              icon: 'alarm-outline',
+              visible: canMarkPaid,
+              onPress: handleSetReminder,
+            },
+          ]}
+        />
 
         {bill.payment_url && (
           <TouchableOpacity

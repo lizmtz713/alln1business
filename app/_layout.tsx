@@ -9,6 +9,9 @@ import { AuthErrorHandler } from '../src/providers/AuthErrorHandler';
 import { ToastProvider } from '../src/components/ui';
 import { AppErrorBoundary } from '../src/components/AppErrorBoundary';
 import { UniversalVoiceInput } from '../src/components/UniversalVoiceInput';
+import { CommandBarProvider } from '../src/contexts/CommandBarContext';
+import { CommandBar } from '../src/components/CommandBar';
+import { CommandBarTrigger } from '../src/components/CommandBarTrigger';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -35,10 +38,14 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthErrorHandler />
           <ToastProvider>
+          <CommandBarProvider>
           <AppErrorBoundary>
             <RootNavigator />
             <UniversalVoiceInput />
+            <CommandBar />
+            <CommandBarTrigger />
           </AppErrorBoundary>
+          </CommandBarProvider>
         </ToastProvider>
         </ThemeProvider>
       </AuthProvider>

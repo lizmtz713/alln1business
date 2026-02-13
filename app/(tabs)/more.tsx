@@ -6,7 +6,7 @@ import { hapticLight } from '../../src/lib/haptics';
 import { MIN_TOUCH_TARGET } from '../../src/lib/constants';
 
 export default function MoreScreen() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const handleSignOut = async () => {
     hapticLight();
@@ -23,16 +23,40 @@ export default function MoreScreen() {
 
       {hasSupabaseEnv && user && (
         <>
+          {!profile?.onboarding_completed && (
+            <TouchableOpacity
+              onPress={() => {
+                hapticLight();
+                router.push('/(auth)/voice-onboarding' as never);
+              }}
+              style={{
+                backgroundColor: '#3B82F6',
+                borderRadius: 12,
+                padding: 16,
+                marginTop: 16,
+                marginBottom: 8,
+                minHeight: MIN_TOUCH_TARGET,
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFF', textAlign: 'center', fontWeight: '600' }}>
+                Finish household setup
+              </Text>
+            </TouchableOpacity>
+          )}
           <Text style={{ color: '#94A3B8', fontSize: 16, marginTop: 24, marginBottom: 12 }}>
             Household
           </Text>
           {[
+            { label: 'Family', path: '/family' as const },
             { label: 'Vehicles', path: '/vehicles' as const },
             { label: 'Pets', path: '/pets' as const },
             { label: 'Insurance', path: '/insurance' as const },
             { label: 'Medical', path: '/medical' as const },
             { label: 'Home Services', path: '/home-services' as const },
             { label: 'Appointments', path: '/appointments' as const },
+            { label: 'Receipt history', path: '/(modals)/receipt-history' as const },
+            { label: 'Voice inventory (insurance)', path: '/(modals)/inventory-walkthrough' as const },
           ].map((item) => (
             <TouchableOpacity
               key={item.path}

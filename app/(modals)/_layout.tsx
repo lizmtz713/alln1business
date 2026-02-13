@@ -29,6 +29,10 @@ export default function ModalsLayout() {
       <Stack.Screen name="upload-document" />
       <Stack.Screen name="edit-document/[id]" />
       <Stack.Screen name="scan-receipt" />
+      <Stack.Screen name="scan-bill" />
+      <Stack.Screen name="receipt-history" />
+      <Stack.Screen name="household-report" />
+      <Stack.Screen name="inventory-walkthrough" />
       <Stack.Screen name="transaction/[id]" />
       <Stack.Screen name="add-vehicle" />
       <Stack.Screen name="edit-vehicle/[id]" />

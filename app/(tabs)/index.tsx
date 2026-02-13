@@ -24,14 +24,18 @@ import { useVehicles } from '../../src/hooks/useVehicles';
 import { useInsurancePolicies } from '../../src/hooks/useInsurance';
 import { usePets } from '../../src/hooks/usePets';
 import { useHomeServiceContacts } from '../../src/hooks/useHomeServices';
+import { useGrowthRecords } from '../../src/hooks/useGrowthRecords';
+import { SmartActionBar } from '../../src/components/SmartActionBar';
 import { hasSupabaseEnv } from '../../src/services/env';
 import { Skeleton, EmptyState, ScreenFadeIn } from '../../src/components/ui';
 import { OfflineBanner } from '../../src/components/OfflineBanner';
 import { PredictiveInsights } from '../../src/components/PredictiveInsights';
+import { HouseholdReportCard } from '../../src/components/HouseholdReportCard';
 import { hapticLight } from '../../src/lib/haptics';
 import { MIN_TOUCH_TARGET } from '../../src/lib/constants';
 import { getCategoryName } from '../../src/lib/categories';
 import { syncBillAndReminderNotifications } from '../../src/services/notificationSchedule';
+import { ensureMonthlyReportForCurrentMonth } from '../../src/services/monthlyReportRunner';
 import type { DashboardInsight } from '../../src/services/insights';
 import type { BillWithVendor } from '../../src/types/bills';
 import type { DocumentWithRelations } from '../../src/types/documents';
@@ -135,6 +139,7 @@ const QUICK_ADD_OPTIONS = [
   { label: 'Add Expense', icon: 'remove', route: '/(modals)/add-expense' as const },
   { label: 'Add Income', icon: 'add', route: '/(modals)/add-income' as const },
   { label: 'Scan Receipt', icon: 'camera', route: '/(modals)/scan-receipt' as const },
+  { label: 'Scan Bill', icon: 'scan', route: '/(modals)/scan-bill' as const },
   { label: 'Add Bill', icon: 'receipt', route: '/(modals)/add-bill' as const },
   { label: 'Upload Document', icon: 'folder-open', route: '/(modals)/upload-document' as const },
   { label: 'Add Vehicle', icon: 'car', route: '/(modals)/add-vehicle' as const },
@@ -166,6 +171,7 @@ export default function DashboardScreen() {
   const { data: insurancePolicies = [] } = useInsurancePolicies();
   const { data: pets = [] } = usePets();
   const { data: homeServiceContacts = [] } = useHomeServiceContacts();
+  const { data: growthRecords = [] } = useGrowthRecords();
   const searchResult = useGlobalSearch(searchQuery);
 
   const upcomingBills = useMemo(() => {
@@ -211,6 +217,24 @@ export default function DashboardScreen() {
       .sort((a, b) => (a.appointment_date < b.appointment_date ? -1 : 1))
       .slice(0, 5);
   }, [appointments]);
+
+  const appointmentsOverdue = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return appointments.filter((a) => a.appointment_date < today);
+  }, [appointments]);
+
+  const sizesNeedUpdate = useMemo(() => {
+    if (growthRecords.length === 0) return false;
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const cutoff = format(sixMonthsAgo, 'yyyy-MM-dd');
+    const latestByPerson = new Map<string, string>();
+    for (const r of growthRecords) {
+      const existing = latestByPerson.get(r.name);
+      if (!existing || r.record_date > existing) latestByPerson.set(r.name, r.record_date);
+    }
+    return [...latestByPerson.values()].some((d) => d < cutoff);
+  }, [growthRecords]);
 
   const expiringInsuranceOrRegistration = useMemo(() => {
     const now = new Date();
@@ -290,9 +314,16 @@ export default function DashboardScreen() {
     syncBillAndReminderNotifications(billPayload, []);
   }, [hasSupabaseEnv, upcomingBills.length]);
 
+  // Monthly report: run on 1st of month when user opens dashboard
+  useEffect(() => {
+    if (!hasSupabaseEnv || !user?.id) return;
+    ensureMonthlyReportForCurrentMonth(user.id);
+  }, [hasSupabaseEnv, user?.id]);
+
   const onRefresh = () => {
     refetchInsights();
     queryClient.invalidateQueries({ queryKey: ['predictedInsights'] });
+    queryClient.invalidateQueries({ queryKey: ['householdReport'] });
   };
 
   const showSearchResults = searchQuery.trim().length >= 2;
@@ -448,6 +479,35 @@ export default function DashboardScreen() {
 
             {hasSupabaseEnv && !showSearchResults && (
               <>
+                <View className="mt-4">
+                  <SmartActionBar
+                    title="Quick actions"
+                    actions={[
+                      {
+                        id: 'pay-bills',
+                        label: 'Pay Bills',
+                        icon: 'card-outline',
+                        visible: upcomingBills.length > 0,
+                        onPress: () => router.push(`/bill/${upcomingBills[0].id}` as never),
+                      },
+                      {
+                        id: 'schedule-checkups',
+                        label: 'Schedule Checkups',
+                        icon: 'calendar-outline',
+                        visible: appointmentsOverdue.length > 0,
+                        onPress: () => router.push('/appointments' as never),
+                      },
+                      {
+                        id: 'update-sizes',
+                        label: 'Update Sizes',
+                        icon: 'resize-outline',
+                        visible: sizesNeedUpdate,
+                        onPress: () => router.push('/(tabs)/household' as never),
+                      },
+                    ]}
+                  />
+                </View>
+
                 {/* Dashboard cards: Upcoming bills, Expiring docs, Recent activity */}
                 <View className="mt-6">
                   <Text className="mb-3 text-lg font-semibold text-white">Upcoming bills (7 days)</Text>
@@ -617,6 +677,8 @@ export default function DashboardScreen() {
                 </View>
 
                 <PredictiveInsights />
+
+                <HouseholdReportCard />
 
                 <View className="mt-4">
                   <Text className="mb-3 text-lg font-semibold text-white">Recent activity</Text>

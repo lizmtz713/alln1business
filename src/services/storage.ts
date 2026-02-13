@@ -4,6 +4,7 @@ import { hasSupabaseConfig } from './supabase';
 
 const BUCKET = 'receipts';
 const DOCUMENTS_BUCKET = 'documents';
+const INVENTORY_BUCKET = 'inventory';
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64);
@@ -205,6 +206,41 @@ export async function uploadPdfToDocumentsBucket(params: {
     return urlData.publicUrl;
   } catch (e) {
     if (__DEV__) console.warn('[Storage] uploadPdfToDocumentsBucket error:', e);
+    return null;
+  }
+}
+
+/** Upload inventory item photo. Path: inventory/{userId}/{itemId or timestamp}.jpg */
+export async function uploadInventoryPhoto(
+  userId: string,
+  localUri: string,
+  itemId?: string
+): Promise<string | null> {
+  if (!hasSupabaseConfig) return null;
+
+  try {
+    const path = `${userId}/${itemId ?? Date.now()}.jpg`;
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: 'base64',
+    });
+    const arrayBuffer = base64ToArrayBuffer(base64);
+
+    const { data, error } = await supabase.storage
+      .from(INVENTORY_BUCKET)
+      .upload(path, arrayBuffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (error) {
+      if (__DEV__) console.warn('[Storage] uploadInventoryPhoto error:', error.message);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage.from(INVENTORY_BUCKET).getPublicUrl(data.path);
+    return urlData.publicUrl;
+  } catch (e) {
+    if (__DEV__) console.warn('[Storage] uploadInventoryPhoto error:', e);
     return null;
   }
 }
