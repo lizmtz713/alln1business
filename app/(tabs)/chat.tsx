@@ -331,7 +331,7 @@ export default function ChatScreen() {
             }}
             value={input}
             onChangeText={setInput}
-            placeholder="Ask about bills, pets, appointments… or say \"Add milk to list\""
+            placeholder={'Ask about bills, pets, appointments... or say "Add milk to list"'}
             placeholderTextColor="#64748B"
             multiline
             editable={!sendMessage.isPending}

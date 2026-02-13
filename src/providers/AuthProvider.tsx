@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
@@ -147,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log('[Auth] signIn() called', { email: email ? `${email.slice(0, 3)}***` : '' });
+    Alert.alert('DEBUG signIn', JSON.stringify({ email: email ? `${email.slice(0, 8)}***` : '', hasSupabase: hasSupabaseConfig }));
     if (!hasSupabaseConfig) {
       return { error: new Error('Supabase not configured. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to .env.local') };
     }
@@ -159,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    console.log('[Auth] signUp() called', { email: email ? `${email.slice(0, 3)}***` : '' });
+    Alert.alert('DEBUG signUp', JSON.stringify({ email: email ? `${email.slice(0, 8)}***` : '', hasSupabase: hasSupabaseConfig }));
     if (!hasSupabaseConfig) {
       console.log('[Auth] signUp: Supabase not configured');
       return { error: new Error('Supabase not configured.') };
@@ -182,18 +183,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [queryClient]);
 
   const signInWithGoogle = useCallback(async (): Promise<{ error: string | null }> => {
-    console.log('[Auth] signInWithGoogle() called');
+    Alert.alert('DEBUG', 'signInWithGoogle started');
     if (!hasSupabaseConfig) {
-      console.log('[Auth] signInWithGoogle: Supabase not configured');
+      Alert.alert('DEBUG Error', 'Supabase not configured.');
       return { error: 'Supabase not configured.' };
     }
 
-    // Scheme: currently alln1business; rebrand to alln1home later (update app.json scheme too).
     const redirectTo = AuthSession.makeRedirectUri({
       path: 'google-auth',
       scheme: 'alln1business',
     });
-    if (__DEV__) console.log('[Auth] Google redirectTo:', redirectTo);
+    Alert.alert('DEBUG redirectTo', redirectTo);
 
     const res = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -206,21 +206,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const url = res.data?.url;
     if (!url) {
-      return { error: res.error?.message ?? 'Could not start Google sign in.' };
+      const errMsg = res.error?.message ?? 'Could not start Google sign in.';
+      Alert.alert('DEBUG Error', errMsg);
+      return { error: errMsg };
     }
+    Alert.alert('DEBUG', 'Opening browser with OAuth URL: ' + url.substring(0, 60) + '...');
 
     const result = await WebBrowser.openAuthSessionAsync(url, redirectTo, { showInRecents: true });
 
     if (result?.type === 'success') {
       const { access_token, refresh_token } = extractParamsFromUrl(result.url);
       if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-        if (error) return { error: error.message };
+        const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (setErr) {
+          Alert.alert('DEBUG Error', 'setSession: ' + setErr.message);
+          return { error: setErr.message };
+        }
         return { error: null };
       }
+      Alert.alert('DEBUG Error', 'Sign in success but no access_token or refresh_token in URL');
       return { error: 'Sign in was cancelled or failed.' };
     }
     if (result?.type === 'cancel') return { error: null };
+    Alert.alert('DEBUG Error', 'Browser result: ' + (result?.type ?? 'unknown'));
     return { error: 'Sign in was cancelled or failed.' };
   }, []);
 

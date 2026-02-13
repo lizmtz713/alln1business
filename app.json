@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ALLN1 Business",
-    "slug": "alln1-business",
+    "name": "Alln1Home",
+    "slug": "alln1home",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.alln1.business"
+      "bundleIdentifier": "com.alln1.home"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0F172A"
       },
-      "package": "com.alln1.business",
+      "package": "com.alln1.home",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
