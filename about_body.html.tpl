@@ -1,0 +1,75 @@
+<section class="hero" style="padding:56px 0"><div class="wrap">
+<p class="eyebrow">About Alln1 Business · Founded 2017</p>
+<h1>Operations, accounting and people first. Then&nbsp;AI.</h1>
+<p class="lead">Alln1 Business: <strong>Grow Your Business with AI: Sales, Marketing, Social &amp; Systems</strong>. Founder Liz Martinez designs connected AI systems: AI agents wired into the phone, CRM, calendar, email, QuickBooks, website and social accounts you already use.</p>
+<p class="trust">Houston-based · Online nationwide · Founded 2017</p>
+</div></section>
+
+<section class="section"><div class="wrap founder">
+<div><img src="/assets/liz-martinez.jpg" alt="Liz Martinez, founder of Alln1 Business" width="720" height="720" loading="eager"><p class="cap">Liz Martinez · Founder, Alln1 Business</p></div>
+<div>
+<p class="eyebrow">Meet Liz</p>
+<h2>I learned how businesses really run from the inside.</h2>
+<p>I’m Liz Martinez. I started Alln1 Business in 2017. Before AI became part of the work, I spent years inside the day-to-day of running businesses: the orders, the books, the schedules and the people.</p>
+<p>For more than 14 years (2010–2024) I was Corporate Manager at Industrial Surplus Inc. I managed corporate and Florida branch operations and led a team of 10. I worked across accounting, HR, procurement and online sales on Amazon and eBay, and I ran the financial reporting in QuickBooks: P&amp;L statements, accounts payable and accounts receivable.</p>
+<p>I also worked as an accounting associate. At Texas Injection Molding (2015–2017) I started as production manager and moved through scheduling and planning, shipping and receiving, customer service, accounting and HR. At Chempak International (2017–2018) I worked on payables, receivables and filing.</p>
+<p>In 2021 I took the Rice University FinTech Boot Camp (Financial Technologies). I hold a BS in Political Science &amp; Government with a double major in Psychology.</p>
+<ul class="timeline">
+  <li><b>2017 – today · Alln1 Business</b><span>Founder · grow your business with AI: sales, marketing, social &amp; systems</span></li>
+  <li><b>2010 – 2024 · Industrial Surplus Inc.</b><span>Corporate Manager · operations, accounting, HR, procurement, online sales</span></li>
+  <li><b>2015 – 2018 · Texas Injection Molding, Chempak International</b><span>Accounting associate roles · AP/AR, scheduling, shipping, customer service, HR</span></li>
+  <li><b>2021 · Rice University Boot Camps</b><span>FinTech (Financial Technologies)</span></li>
+  <li><b>BS, Political Science &amp; Government</b><span>Double major in Psychology</span></li>
+</ul>
+</div>
+</div></section>
+
+<section class="section alt"><div class="wrap">
+<p class="eyebrow">Why that matters for connected AI</p>
+<h2>Connected AI is operations, money and people, wired together.</h2>
+<p class="lede">An AI system only helps if it fits how your business actually works. That’s the part Liz has been doing for years.</p>
+<div class="grid why" style="margin-top:22px">
+  <div class="card"><p class="k">Operations</p><h3>She knows where the handoffs break</h3><p>Orders, scheduling, shipping, procurement and customer service: Liz has run the workflow end to end. Connecting your tools is workflow design first, and the AI comes second.</p></div>
+  <div class="card"><p class="k">Accounting</p><h3>The money side gets built right</h3><p>Leads turn into quotes, invoices and payments. Liz has worked AP/AR, P&amp;L reporting and QuickBooks from the inside, so the steps that touch your books are set up with care.</p></div>
+  <div class="card"><p class="k">People</p><h3>Systems people trust</h3><p>Years of leading a team and handling HR, plus a psychology degree, taught her that automation only works when your staff and customers trust it. That’s why you approve what goes out.</p></div>
+</div>
+</div></section>
+
+<section class="section"><div class="wrap">
+<p class="eyebrow">How Alln1 works</p>
+<h2>Built by AI. Directed by Liz.</h2>
+<div class="grid" style="margin-top:22px">
+  <div class="card"><h3>Liz directs</h3><p>She talks with you, maps how leads, jobs, money and messages move today, designs the system, sets the rules, and reviews every build before it launches.</p></div>
+  <div class="card"><h3>AI agents do the work, labeled as AI</h3><p>Alln1’s specialist agents (Aria, Rex, Orbit, Sage and Pulse) draft, build, test and monitor. They are AI, and we always say so. We don’t claim a human staff we don’t have.</p></div>
+  <div class="card"><h3>You approve</h3><p>Anything that reaches your customers waits for your OK. Every workflow is tested in the Alln1 Lab with test data before it goes live, and Managed AI Ops keeps it running afterwards.</p></div>
+</div>
+</div></section>
+
+<section class="section alt"><div class="wrap">
+<p class="eyebrow">The brand line</p>
+<h2>Grow Your Business with AI: Sales, Marketing, Social &amp; Systems</h2>
+<p class="lede">Sales, marketing and social media are what small businesses care about most. Connected systems are how we deliver them.</p>
+<div class="line3">
+  <div class="card"><h3>Sales</h3><p>AI agents answer calls, chats and web leads, qualify them, book your calendar and follow up. Your CRM, quotes and QuickBooks are connected, so leads don’t slip through and invoices go out.</p></div>
+  <div class="card"><h3>Marketing</h3><p>Reviews, local SEO, Google Business Profile and email campaigns are wired to your CRM. AI drafts the work, you approve it, and you can see which marketing turns into booked jobs.</p></div>
+  <div class="card"><h3>Social Media</h3><p>AI drafts posts and replies from your real jobs and offers for Facebook, Instagram, LinkedIn and more. Nothing is published until you approve it, and leads from social land in your CRM.</p></div>
+  <div class="card"><h3>Systems</h3><p>Under all three: AI agents and integrations that connect your phone, CRM, calendar, email, QuickBooks and website, so data moves itself and nothing has to be copied by hand.</p></div>
+</div>
+<p class="cta" style="margin-top:22px"><a class="btn ghost" href="/services">See systems &amp; pricing</a></p>
+</div></section>
+
+<section class="section"><div class="wrap narrow">
+<p class="eyebrow">Starting from scratch?</p>
+<h2>AI-Ready Business Launch</h2>
+<p>For new businesses, Liz guides the setup from idea to open: DBA or LLC filing help, an EIN walkthrough, a bank-ready paperwork packet, then brand, website, email, Google Business Profile and social, connected with AI from day one. Packages start at $997.</p>
+<p class="tiny">Government fees are paid by you, and you open your bank account at the bank you choose. This isn’t legal, tax or CPA advice; we refer you to a licensed professional where needed.</p>
+<p class="cta"><a class="btn ghost" href="/launch">See Business Launch</a></p>
+</div></section>
+
+<section class="section alt"><div class="wrap narrow">
+<h2>Talk with Liz</h2>
+<p class="lede">You don’t need to learn AI. You need it working. Start with a $497 AI Audit &amp; Roadmap, credited toward your build.</p>
+<p class="cta"><a class="btn" href="/#audit">Book an AI Audit</a><a class="btn ghost" href="/services">See systems &amp; pricing</a></p>
+<p class="tiny">Contact: <a href="mailto:{EMAIL}">{EMAIL}</a> · <a href="tel:{PHONE_TEL}">{PHONE}</a> · Houston-based, online nationwide.</p>
+<p class="tiny">Honest by design: we don’t invent clients, testimonials, results, awards or certifications. Aria, Rex, Orbit, Sage and Pulse are AI.</p>
+</div></section>

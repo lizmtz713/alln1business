@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://alln1business.com/sitemap.xml

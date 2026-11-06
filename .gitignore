@@ -1,0 +1,28 @@
+# Secrets. Set values in the Cloudflare Pages project or a local .dev.vars file.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+
+# Python and local tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Cloudflare local state and dependencies
+.wrangler/
+node_modules/
+
+# Generated site and caches
+dist-inquiry-form/
+dist/
+.cache/
+
+# Screenshot dumps and backup copies
+shots/
+*backup*/
+*.bak

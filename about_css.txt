@@ -1,0 +1,12 @@
+<style>
+.founder{display:grid;grid-template-columns:300px 1fr;gap:40px;align-items:start}
+.founder img{width:100%;height:auto;border-radius:20px;border:1px solid var(--line);display:block}
+.founder .cap{font-size:13px;color:var(--muted);margin-top:10px}
+.timeline{list-style:none;padding:0;margin:18px 0 0;border-left:2px solid var(--line)}
+.timeline li{padding:0 0 14px 18px;position:relative}
+.timeline li:before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--orange)}
+.timeline b{display:block}.timeline span{color:var(--muted);font-size:14px}
+.why h3{margin-top:0}.why .k{color:var(--orange);font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.line3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:18px}
+@media(max-width:760px){.founder{grid-template-columns:1fr}.founder img{max-width:260px}}
+</style>
