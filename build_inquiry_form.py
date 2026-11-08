@@ -109,7 +109,6 @@ FORM_BODY = f'''<section class="section">
 </div>
 <div class="row2">
 <label>Email<input name="email" type="email" required autocomplete="email" maxlength="150" inputmode="email"></label>
-<label>Phone <span class="opt">(optional)</span><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
 </div>
 <label>Website <span class="opt">(optional)</span><input name="website" type="text" inputmode="url" autocomplete="url" maxlength="200" placeholder="yourbusiness.com"></label>
 <fieldset>
