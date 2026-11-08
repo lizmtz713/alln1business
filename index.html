@@ -204,7 +204,6 @@
 <form id="lead-form" class="lead-form" novalidate>
 <label>Name<input name="name" required autocomplete="name" maxlength="100"></label>
 <label>Email<input name="email" type="email" required autocomplete="email" maxlength="150"></label>
-<label>Phone (optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
 <label>Business name<input name="business" required maxlength="150"></label>
 <label>Which system?<select name="service_interest" id="service_interest">
 <option value="">Not sure yet — help me choose</option>
@@ -242,9 +241,10 @@ finally{b.disabled=false;});})();
   <p><strong>Alln1 Business</strong> · Founded 2017<br>Grow Your Business with AI: Sales, Marketing, Social &amp; Systems<br>Connected AI systems for small businesses. Built by AI. Directed by Liz.</p></div>
   <div>
     <p><strong>Contact</strong><br>
+    Alln1 Business, a DBA of Elizabeth Martinez, 8236 Dover St, Houston, TX 77061<br>
     <a href="mailto:liz@alln1business.com">liz@alln1business.com</a><br>
     <a href="tel:+12818103315">(281) 810-3315</a></p>
-    <p class="tiny">Based in Houston · Delivered online nationwide<br>In-person by appointment in Greater Houston<br>No street address published.</p>
+    <p class="tiny">Based in Houston · Delivered online nationwide<br>In-person by appointment in Greater Houston</p>
   </div>
   <div>
     <p><strong>Explore</strong><br>
@@ -255,4 +255,8 @@ finally{b.disabled=false;});})();
 </div>
 <p class="legal">© 2026 Alln1 Business. Specialist agents are AI — Liz Martinez architects and reviews every system, and clients approve what goes out. Example flows are example scenarios, not client results. Tool names are trademarks of their owners; no partnership implied. No fake clients, stats, or guarantees.</p>
 </footer>
+<script>(function(){function pick(){var s=document.getElementById('service_interest');if(s)s.value='AI Audit & Roadmap';}
+if(/[?&]interest=audit/.test(location.search))pick();
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[data-audit-cta]');if(a&&document.getElementById('lead-form'))pick();});})();</script>
+<script src="https://widgets.leadconnectorhq.com/loader.js" data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="6af0b754e90adeca202e170c" data-source="WEB_USER"></script>
 </body></html>
