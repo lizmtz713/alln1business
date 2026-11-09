@@ -1,5 +1,9 @@
 # Richer page preview: receptionist and trades hub
 
+The two sample pages were rebuilt on November 9, 2026 to the approved page plan. Receptionist body is 2,064 words. Trades hub body is 1,692 words. The menu on those two pages is Industries, Solve a Problem, All Automations, How It Works, and Book an AI Audit. Last updated is small print at the bottom. Full-page screenshots are `v2-receptionist-desktop.png`, `v2-receptionist-phone.png`, `v2-trades-desktop.png`, and `v2-trades-phone.png`.
+
+# Earlier draft notes
+
 Preview only. Not deployed. Not merged.
 
 Base: the attached live zip for batch 13 (273 files, deploy b635a8a5). Footer, Terms, Privacy, `faq.html`, the chat widget, and `assets/chat-quiet.js` match that zip from the footer downward, and Terms, Privacy, `faq.html`, and `chat-quiet.js` are byte-for-byte unchanged.
