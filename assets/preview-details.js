@@ -1,0 +1,2 @@
+/* Preview only: keep existing deep links useful inside retained details. */
+(function(){function reveal(){var id;try{id=decodeURIComponent(location.hash.slice(1));}catch(e){return;}var target=document.getElementById(id);var more=target&&target.closest('.preview-more');if(more){more.open=true;requestAnimationFrame(function(){target.scrollIntoView();});}}window.addEventListener('hashchange',reveal);document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(a&&a.hash===location.hash)reveal();});reveal();})();

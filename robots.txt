@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://alln1business.com/sitemap.xml
+# llms.txt: https://alln1business.com/llms.txt
