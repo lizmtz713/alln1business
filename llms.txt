@@ -125,7 +125,7 @@ Staged package roadmaps (starting out, growing, established). Each stage's "from
 
 ## Reading this site accurately
 
-Service descriptions and example flows are proposed custom-build possibilities unless explicitly labeled otherwise. A video illustration is not proof of a tested or live deployment. Tests, launch permissions, review rules and optional support coverage are agreed in scope. Metadata and this file support discoverability; they do not guarantee search rankings, AI citations, traffic or revenue. The Book an AI Audit button opens an inquiry: Liz replies to arrange the audit; it does not reserve a calendar time or take payment.
+Service descriptions and example flows are proposed custom-build possibilities unless explicitly labeled otherwise. A video illustration is not proof of a tested or live deployment. Tests, launch permissions, review rules and optional support coverage are agreed in scope. Metadata and this file support discoverability; they do not guarantee search rankings, AI citations, traffic or revenue. The main button, Book a free 15-min call, opens the 15-minute booking calendar. The $497 AI Audit and Roadmap comes after that call, only if it is a fit.
 
 ## Automation catalog
 
