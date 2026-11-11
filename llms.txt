@@ -36,6 +36,24 @@ Alln1 Business serves small businesses nationwide and is based in Houston, TX. C
 - [Bilingual AI: English and Spanish](https://alln1business.com/bilingual-ai): Phone, chat and follow-ups that switch to Spanish when the customer does. It fits Houston and Texas businesses. Part of AI Agent Systems.
 - [Owner’s daily AI briefing](https://alln1business.com/owner-daily-briefing): One short morning email with new leads, bookings, reviews and unpaid invoices. Part of AI Ops Infrastructure.
 
+## Other automations
+
+- [Year-end giving statements](https://alln1business.com/year-end-giving-statements): Donor statements built from donation records, for a treasurer to review before they go out. For nonprofits and churches.
+- [Volunteer scheduling](https://alln1business.com/volunteer-scheduling): Shift sign-ups, reminders, and backup fill-ins. The coordinator approves the swaps they mark.
+- [Grant fund tracker](https://alln1business.com/grant-fund-tracker): Grant spending, deadlines, and a report draft matched to each grant’s budget. A person submits the report.
+- [Staffing timesheet check](https://alln1business.com/staffing-timesheet-check): Hours checked against the schedule and the client’s approval before payroll. A person approves any change.
+- [Payroll reconciliation](https://alln1business.com/payroll-reconciliation): Payroll reports compared with bank withdrawals and the books. Differences are listed for a person. Not payroll filing.
+- [Certified payroll reports](https://alln1business.com/certified-payroll-reports): Weekly certified payroll drafted from timesheets and pay rates. An authorized person signs. The automation does not submit it.
+- [Supplier rebate check](https://alln1business.com/supplier-rebate-recovery): Purchases compared with supplier agreements to list rebates or volume discounts not yet claimed. A person confirms each claim. Not a promise the supplier will pay it.
+- [Freight invoice evidence](https://alln1business.com/freight-invoice-evidence): Freight invoices checked against bills of lading and delivery records. A person reviews the packet before a dispute is sent.
+- [Resale certificate check](https://alln1business.com/resale-certificate-check): Customer resale certificates collected and checked, with expiry dates listed for a person. Not tax advice.
+- [Commission statement check](https://alln1business.com/commission-statement-check): Carrier commission statements compared with the policies the agency sold. A person decides every follow-up.
+- [Rental return check](https://alln1business.com/rental-return-check): Check-in photos, damage notes, and late-return follow-up. Staff decide safety and any charge.
+- [Recall notices](https://alln1business.com/recall-reminders): Past buyers of a recalled product or part listed from your orders. A person approves the notice. Not a promise every buyer is reached.
+- [Menu and hours sync](https://alln1business.com/menu-hours-sync): One menu or hours change drafted for Google, the website, and ordering apps. You approve each listing.
+- [MTR paperwork check](https://alln1business.com/mtr-paperwork-check): Mill test reports matched to purchase orders and job specs. Quality staff accept or reject.
+- [Digital intake forms](https://alln1business.com/digital-intake-forms): Paper or PDF intake forms turned into online forms that feed the CRM. A person reviews the answers.
+
 ## Locations
 
 - [Connected AI systems for Arlington, TX small businesses](https://alln1business.com/locations/arlington-tx): Arlington sits between Dallas and Fort Worth — and still gets full Alln1 delivery online: revenue, ops, integrations, SEO and marketing systems, all connected.
